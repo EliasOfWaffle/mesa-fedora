@@ -361,7 +361,6 @@ export CXX=clang++
   -Dplatforms=x11,wayland \
   -Ddri3=enabled \
   -Dosmesa=true \
-  -Dbuildtype=release\
   -Db_lto_mode=thin \
   -Db_thinlto_cache=true \
 %if 0%{?with_hardware}
