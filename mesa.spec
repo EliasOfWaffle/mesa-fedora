@@ -61,6 +61,8 @@
 
 %global vulkan_drivers swrast%{?base_vulkan}%{?platform_vulkan}
 
+%global toolchain clang 
+
 Name:           mesa
 Summary:        Mesa graphics libraries
 %global ver 23.0.1
