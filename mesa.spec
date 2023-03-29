@@ -394,7 +394,7 @@ export CXX=clang++
   -Dbuild-tests=false \
   -Dselinux=true \
   -Dzstd=true \
-  -Dintel-clc=true \
+  -Dintel-clc=enabled \
   
   %{nil}
 %meson_build
