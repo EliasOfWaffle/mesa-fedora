@@ -86,6 +86,8 @@ BuildRequires:  gettext
 BuildRequires: libclc
 BuildRequires: libclc-devel
 BuildRequires: libzstd
+BuildRequires: python3-devel
+BuildRequires: python3-ply
 %if 0%{?with_hardware}
 BuildRequires:  kernel-headers
 %endif
