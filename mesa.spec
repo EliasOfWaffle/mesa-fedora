@@ -359,6 +359,7 @@ export CC=clang
 export CXX=clang++
 export CC_LD=lld
 export CX_LD=lld
+export CXX_LD=lld
 export LLD=lld
 export AR=llvm-ar
 export NM=llvm-nm
