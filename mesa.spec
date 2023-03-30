@@ -356,7 +356,6 @@ export RUSTFLAGS="%build_rustflags"
 # We've gotten a report that enabling LTO for mesa breaks some games. See
 # https://bugzilla.redhat.com/show_bug.cgi?id=1862771 for details.
 # Disable LTO for now
-%global %_lto_cflags 1
 
 export CC=clang
 export CXX=clang++
