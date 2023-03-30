@@ -359,6 +359,7 @@ export CC=clang
 export CXX=clang++
 export CC_LD=lld
 export CX_LD=lld
+export LLD=lld.ld
 
 %meson \
   -Dplatforms=x11,wayland \
