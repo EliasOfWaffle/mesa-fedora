@@ -357,9 +357,11 @@ export RUSTFLAGS="%build_rustflags"
 
 export CC=clang
 export CXX=clang++
-export CC_LD=lld
-export CX_LD=lld
+export CC_LD=lld.ld
+export CX_LD=lld.ld
 export LLD=lld.ld
+export AR=llvm-ar
+export NM=llvm-nm
 
 %meson \
   -Dplatforms=x11,wayland \
