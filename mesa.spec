@@ -78,11 +78,9 @@ Source0:        https://archive.mesa3d.org/mesa-%{ver}.tar.xz
 # Fedora opts to ignore the optional part of clause 2 and treat that code as 2 clause BSD.
 Source1:        Mesa-MLAA-License-Clarification-Email.txt
 
-Patch10:        gnome-shell-glthread-disable.patch
-
 BuildRequires:  meson >= 1.0.0
-BuildRequires:  clang14
-BuildRequires:  lld14
+BuildRequires:  clang
+BuildRequires:  lld
 BuildRequires:  gettext
 BuildRequires:  libclc
 BuildRequires:  libclc-devel
@@ -137,7 +135,7 @@ BuildRequires:  pkgconfig(libelf)
 BuildRequires:  pkgconfig(libglvnd) >= 1.3.2
 BuildRequires:  llvm-devel >= 7.0.0
 %if 0%{?with_opencl}
-BuildRequires:  clang14-devel
+BuildRequires:  clang-devel
 BuildRequires:  bindgen
 BuildRequires:  rust-packaging
 BuildRequires:  pkgconfig(libclc)
@@ -367,7 +365,7 @@ export CX_LD=lld
   -Ddri3=enabled \
   -Dosmesa=true \
   -Db_lto=true \
-  -Db_lto_mode=default \
+  -Db_lto_mode=thin \
 %if 0%{?with_hardware}
   -Dgallium-drivers=swrast,virgl,nouveau%{?with_r300:,r300}%{?with_crocus:,crocus}%{?with_i915:,i915}%{?with_iris:,iris}%{?with_vmware:,svga}%{?with_radeonsi:,radeonsi}%{?with_r600:,r600}%{?with_freedreno:,freedreno}%{?with_etnaviv:,etnaviv}%{?with_tegra:,tegra}%{?with_vc4:,vc4}%{?with_v3d:,v3d}%{?with_kmsro:,kmsro}%{?with_lima:,lima}%{?with_panfrost:,panfrost}%{?with_vulkan_hw:,zink} \
 %else
