@@ -81,11 +81,11 @@ Source1:        Mesa-MLAA-License-Clarification-Email.txt
 Patch10:        gnome-shell-glthread-disable.patch
 
 BuildRequires:  meson >= 1.0.0
-BuildRequires:  clang14
-BuildRequires:  lld14
+BuildRequires:  clang = 14.0.0
+BuildRequires:  lld = 14.0.0
 BuildRequires:  gettext
-BuildRequires:  libclc
-BuildRequires:  libclc-devel
+BuildRequires:  libclc = 14.0.0
+BuildRequires:  libclc-devel = 14.0.0
 BuildRequires:  libzstd
 BuildRequires:  python3-devel
 BuildRequires:  python3-ply
@@ -135,9 +135,9 @@ BuildRequires:  pkgconfig(libomxil-bellagio)
 %endif
 BuildRequires:  pkgconfig(libelf)
 BuildRequires:  pkgconfig(libglvnd) >= 1.3.2
-BuildRequires:  llvm-devel >= 7.0.0
+BuildRequires:  llvm-devel = 14.0.0
 %if 0%{?with_opencl}
-BuildRequires:  clang14-devel
+BuildRequires:  clang-devel = 14.0.0
 BuildRequires:  bindgen
 BuildRequires:  rust-packaging
 BuildRequires:  pkgconfig(libclc)
