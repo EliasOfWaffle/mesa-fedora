@@ -83,11 +83,11 @@ BuildRequires:  meson >= 1.0.0
 BuildRequires:  clang
 BuildRequires:  lld
 BuildRequires:  gettext
-BuildRequires: libclc
-BuildRequires: libclc-devel
-BuildRequires: libzstd
-BuildRequires: python3-devel
-BuildRequires: python3-ply
+BuildRequires:  libclc
+BuildRequires:  libclc-devel
+BuildRequires:  libzstd
+BuildRequires:  python3-devel
+BuildRequires:  python3-ply
 %if 0%{?with_hardware}
 BuildRequires:  kernel-headers
 %endif
@@ -366,7 +366,6 @@ export CX_LD=lld
   -Dplatforms=x11,wayland \
   -Ddri3=enabled \
   -Dosmesa=true \
-  -Db_lto_mode=default \
 %if 0%{?with_hardware}
   -Dgallium-drivers=swrast,virgl,nouveau%{?with_r300:,r300}%{?with_crocus:,crocus}%{?with_i915:,i915}%{?with_iris:,iris}%{?with_vmware:,svga}%{?with_radeonsi:,radeonsi}%{?with_r600:,r600}%{?with_freedreno:,freedreno}%{?with_etnaviv:,etnaviv}%{?with_tegra:,tegra}%{?with_vc4:,vc4}%{?with_v3d:,v3d}%{?with_kmsro:,kmsro}%{?with_lima:,lima}%{?with_panfrost:,panfrost}%{?with_vulkan_hw:,zink} \
 %else
