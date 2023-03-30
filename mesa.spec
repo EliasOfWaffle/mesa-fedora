@@ -357,9 +357,9 @@ export RUSTFLAGS="%build_rustflags"
 
 export CC=clang
 export CXX=clang++
-export CC_LD=lld.ld
-export CX_LD=lld.ld
-export LLD=lld.ld
+export CC_LD=lld
+export CX_LD=lld
+export LLD=lld
 export AR=llvm-ar
 export NM=llvm-nm
 
