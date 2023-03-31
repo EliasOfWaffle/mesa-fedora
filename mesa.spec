@@ -445,6 +445,7 @@ popd
 %{_includedir}/GL/internal/dri_interface.h
 %{_libdir}/pkgconfig/dri.pc
 %{_libdir}/libglapi.so
+%{_libdir}/libgrl.a
 
 %files libEGL
 %{_datadir}/glvnd/egl_vendor.d/50_mesa.json
@@ -653,7 +654,6 @@ popd
 %{_datadir}/vulkan/icd.d/freedreno_icd.*.json
 %{_libdir}/libvulkan_panfrost.so
 %{_datadir}/vulkan/icd.d/panfrost_icd.*.json
-%{_libdir}/libgrl.a
 %endif
 %endif
 
