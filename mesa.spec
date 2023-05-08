@@ -66,7 +66,7 @@
 
 Name:           mesa
 Summary:        Mesa graphics libraries
-%global ver 23.0.1
+%global ver 23.0.1-rc4
 Version:        %{lua:ver = string.gsub(rpm.expand("%{ver}"), "-", "~"); print(ver)}
 Release:        %autorelease
 License:        MIT
@@ -353,7 +353,6 @@ export RUSTFLAGS="%build_rustflags"
 
 # We've gotten a report that enabling LTO for mesa breaks some games. See
 # https://bugzilla.redhat.com/show_bug.cgi?id=1862771 for details.
-# Disable LTO for now
 
 export CC=clang
 export CXX=clang++
@@ -371,7 +370,6 @@ export STRIP=llvm-strip
   -Dosmesa=true \
   -Db_lto=true \
   -Db_lto_mode=default \
-  -Damber=true \
 %if 0%{?with_hardware}
   -Dgallium-drivers=swrast,virgl,nouveau%{?with_r300:,r300}%{?with_crocus:,crocus}%{?with_i915:,i915}%{?with_iris:,iris}%{?with_vmware:,svga}%{?with_radeonsi:,radeonsi}%{?with_r600:,r600}%{?with_freedreno:,freedreno}%{?with_etnaviv:,etnaviv}%{?with_tegra:,tegra}%{?with_vc4:,vc4}%{?with_v3d:,v3d}%{?with_kmsro:,kmsro}%{?with_lima:,lima}%{?with_panfrost:,panfrost}%{?with_vulkan_hw:,zink} \
 %else
