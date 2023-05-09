@@ -400,8 +400,8 @@ export STRIP=llvm-strip
   -Dvalgrind=%{?with_valgrind:enabled}%{!?with_valgrind:disabled} \
   -Dbuild-tests=false \
   -Dselinux=true \
-  -Dzstd=true  \
-  -Dandroid-libbacktrace=disable \
+  -Dzstd=enabled \
+  -Dandroid-libbacktrace=disabled \
   
 %{nil}
 %meson_build
