@@ -364,7 +364,7 @@ export AR=llvm-ar
 export NM=llvm-nm
 export STRIP=llvm-strip
 
-%meson \
+%meson --buildtype=release \
   -Dplatforms=x11,wayland \
   -Ddri3=enabled \
   -Dosmesa=true \
@@ -400,9 +400,10 @@ export STRIP=llvm-strip
   -Dvalgrind=%{?with_valgrind:enabled}%{!?with_valgrind:disabled} \
   -Dbuild-tests=false \
   -Dselinux=true \
-  -Dzstd=true  
+  -Dzstd=true  \
+  -Dandroid-libbacktrace=disable \
   
-  %{nil}
+%{nil}
 %meson_build
 
 %install
