@@ -26,7 +26,7 @@
 %global with_i915   1
 %global with_iris   1
 %global with_xa     1
-%global platform_vulkan ,intel,intel_hasvk
+%global platform_vulkan ,intel,intel_hasvk, nouveau-experimental
 %endif
 
 %ifarch aarch64
@@ -72,7 +72,7 @@ Release:        %autorelease
 License:        MIT
 URL:            http://www.mesa3d.org
 
-Source0:        https://archive.mesa3d.org/mesa-%{ver}.tar.xz
+Source0:       https://gitlab.freedesktop.org/nouveau/mesa/-/archive/nvk/main/mesa-nvk-main.tar.gz
 # src/gallium/auxiliary/postprocess/pp_mlaa* have an ... interestingly worded license.
 # Source1 contains email correspondence clarifying the license terms.
 # Fedora opts to ignore the optional part of clause 2 and treat that code as 2 clause BSD.
@@ -400,8 +400,7 @@ export STRIP=llvm-strip
   -Dvalgrind=%{?with_valgrind:enabled}%{!?with_valgrind:disabled} \
   -Dbuild-tests=false \
   -Dselinux=true \
-  -Dzstd=true \
-  -Dintel-clc=enabled \
+  -Dzstd=true  
   
   %{nil}
 %meson_build
