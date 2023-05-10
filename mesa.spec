@@ -95,6 +95,7 @@ BuildRequires:  kernel-headers
 # https://bugzilla.redhat.com/show_bug.cgi?id=1859515
 BuildRequires:  pkgconfig(libdrm) >= 2.4.97
 BuildRequires:  pkgconfig(libunwind)
+BuildRequires:  pkgconfig(lm_sensors)
 BuildRequires:  pkgconfig(expat)
 BuildRequires:  pkgconfig(zlib) >= 1.2.3
 BuildRequires:  pkgconfig(libselinux)
