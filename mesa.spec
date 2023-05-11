@@ -630,13 +630,13 @@ popd
 %{_libdir}/libvulkan_radeon.so
 %{_datadir}/drirc.d/00-radv-defaults.conf
 %{_datadir}/vulkan/icd.d/radeon_icd.*.json
+%(_libdir}/vulkan/libvulkan_nouveau.so
+%(_datadir)/vulkan/icd.d/nouveau_icd.*.json
 %ifarch %{ix86} x86_64
 %{_libdir}/libvulkan_intel.so
 %{_datadir}/vulkan/icd.d/intel_icd.*.json
 %{_libdir}/libvulkan_intel_hasvk.so
 %{_datadir}/vulkan/icd.d/intel_hasvk_icd.*.json
-%(_libdir}/vulkan/libvulkan_nouveau.so
-%(_datadir)/vulkan/icd.d/nouveau_icd.*.json
 %endif
 %ifarch aarch64
 %{_libdir}/libvulkan_broadcom.so
