@@ -638,6 +638,7 @@ popd
 %(_datadir)/vulkan/icd.d/nouveau_icd.x86_64.json
 %{_datadir}/vulkan/icd.d/intel_hasvk_icd.*.json
 %endif
+%endif
 %ifarch aarch64
 %{_libdir}/libvulkan_broadcom.so
 %{_datadir}/vulkan/icd.d/broadcom_icd.*.json
