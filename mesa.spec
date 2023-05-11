@@ -435,7 +435,6 @@ popd
 %{_includedir}/GL/internal/dri_interface.h
 %{_libdir}/pkgconfig/dri.pc
 %{_libdir}/libglapi.so
-%{_libdir}/libgrl.a
 
 %files libEGL
 %{_datadir}/glvnd/egl_vendor.d/50_mesa.json
@@ -636,6 +635,7 @@ popd
 %{_datadir}/vulkan/icd.d/intel_icd.*.json
 %{_libdir}/libvulkan_intel_hasvk.so
 %{_datadir}/vulkan/icd.d/intel_hasvk_icd.*.json
+%(_datadir}/vulkan/libvulkan_nouveau.so
 %endif
 %ifarch aarch64
 %{_libdir}/libvulkan_broadcom.so
