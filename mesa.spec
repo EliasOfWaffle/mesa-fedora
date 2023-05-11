@@ -95,7 +95,6 @@ BuildRequires:  kernel-headers
 # https://bugzilla.redhat.com/show_bug.cgi?id=1859515
 BuildRequires:  pkgconfig(libdrm) >= 2.4.97
 BuildRequires:  pkgconfig(libunwind)
-BuildRequires:  pkgconfig(lm_sensors-devel)
 BuildRequires:  pkgconfig(expat)
 BuildRequires:  pkgconfig(zlib) >= 1.2.3
 BuildRequires:  pkgconfig(libselinux)
@@ -122,6 +121,7 @@ BuildRequires:  pkgconfig(glproto) >= 1.4.14
 BuildRequires:  pkgconfig(xcb-xfixes)
 BuildRequires:  pkgconfig(xcb-randr)
 BuildRequires:  pkgconfig(xrandr) >= 1.3
+BuildRequires:  lm_sensors-devel
 BuildRequires:  bison
 BuildRequires:  flex
 %if 0%{?with_vdpau}
