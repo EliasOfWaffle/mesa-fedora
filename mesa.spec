@@ -18,7 +18,7 @@
 %global with_omx 1
 %global with_opencl 1
 %endif
-%global base_vulkan ,amd
+%global base_vulkan ,amd,nouveau-experimental
 %endif
 
 %ifarch %{ix86} x86_64
@@ -26,7 +26,7 @@
 %global with_i915   1
 %global with_iris   1
 %global with_xa     1
-%global platform_vulkan ,intel,intel_hasvk,nouveau-experimental
+%global platform_vulkan ,intel,intel_hasvk
 %endif
 
 %ifarch aarch64
