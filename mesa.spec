@@ -356,16 +356,6 @@ export RUSTFLAGS="%build_rustflags"
 # We've gotten a report that enabling LTO for mesa breaks some games. See
 # https://bugzilla.redhat.com/show_bug.cgi?id=1862771 for details.
 
-export CC=clang
-export CXX=clang++
-export CC_LD=lld
-export CX_LD=lld
-export CXX_LD=lld
-export LLD=lld
-export AR=llvm-ar
-export NM=llvm-nm
-export STRIP=llvm-strip
-
 %meson --buildtype=release \
   -Dplatforms=x11,wayland \
   -Ddri3=enabled \
