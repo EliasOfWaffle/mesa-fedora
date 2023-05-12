@@ -18,7 +18,7 @@
 %global with_omx 1
 %global with_opencl 1
 %endif
-%global base_vulkan ,amd
+%global base_vulkan ,amd,nouveau-experimental
 %endif
 
 %ifarch %{ix86} x86_64
@@ -62,20 +62,18 @@
 %global vulkan_drivers swrast%{?base_vulkan}%{?platform_vulkan}
 
 Name:           mesa
-Summary:        Mesa graphics libraries
-%global ver 23.0.3
+Summary:        Mesa graphics libraries from nouveau nvk/main branch
+%global ver nvk-main
 Version:        %{lua:ver = string.gsub(rpm.expand("%{ver}"), "-", "~"); print(ver)}
 Release:        %autorelease
 License:        MIT
 URL:            http://www.mesa3d.org
 
-Source0:        https://archive.mesa3d.org/mesa-%{ver}.tar.xz
+Source0:        https://gitlab.freedesktop.org/nouveau/mesa/-/archive/nvk/main/mesa-nvk-main.tar.gz
 # src/gallium/auxiliary/postprocess/pp_mlaa* have an ... interestingly worded license.
 # Source1 contains email correspondence clarifying the license terms.
 # Fedora opts to ignore the optional part of clause 2 and treat that code as 2 clause BSD.
 Source1:        Mesa-MLAA-License-Clarification-Email.txt
-
-Patch10:        gnome-shell-glthread-disable.patch
 
 BuildRequires:  meson >= 1.0.0
 BuildRequires:  gcc
@@ -89,6 +87,7 @@ BuildRequires:  kernel-headers
 # https://bugzilla.redhat.com/show_bug.cgi?id=1859515
 BuildRequires:  pkgconfig(libdrm) >= 2.4.97
 BuildRequires:  pkgconfig(expat)
+BuildRequires:  pkgconfig(libunwind)
 BuildRequires:  pkgconfig(zlib) >= 1.2.3
 BuildRequires:  pkgconfig(libselinux)
 BuildRequires:  pkgconfig(wayland-scanner)
@@ -114,6 +113,7 @@ BuildRequires:  pkgconfig(glproto) >= 1.4.14
 BuildRequires:  pkgconfig(xcb-xfixes)
 BuildRequires:  pkgconfig(xcb-randr)
 BuildRequires:  pkgconfig(xrandr) >= 1.3
+BuildRequires:  lm_sensors-devel
 BuildRequires:  bison
 BuildRequires:  flex
 %if 0%{?with_vdpau}
@@ -391,6 +391,7 @@ export RUSTFLAGS="%build_rustflags"
   -Dvalgrind=%{?with_valgrind:enabled}%{!?with_valgrind:disabled} \
   -Dbuild-tests=false \
   -Dselinux=true \
+  -Dzstd=enabled \
   %{nil}
 %meson_build
 
@@ -628,6 +629,8 @@ popd
 %{_libdir}/libvulkan_radeon.so
 %{_datadir}/drirc.d/00-radv-defaults.conf
 %{_datadir}/vulkan/icd.d/radeon_icd.*.json
+%(_libdir}/vulkan/libvulkan_nouveau.so
+%(_datadir)/vulkan/icd.d/nouveau_icd.*.json
 %ifarch %{ix86} x86_64
 %{_libdir}/libvulkan_intel.so
 %{_datadir}/vulkan/icd.d/intel_icd.*.json
@@ -645,6 +648,11 @@ popd
 %endif
 
 %changelog
+* Mon May 12 2023 EliasOfWaffle <eliascontato@protonmail.com> - nvk-main
+- Move to Nouveau Mesa3d Repo 
+- Build experimental Nouveau Vulkan Driver.
+- Enable ZSTD compression
+
 * Mon May 01 2023 Michel Dänzer <mdaenzer@redhat.com> - 23.0.3-3
 - Enable intel-clc for ANV ray tracing support
 
