@@ -392,6 +392,7 @@ export RUSTFLAGS="%build_rustflags"
   -Dbuild-tests=false \
   -Dselinux=true \
   -Dzstd=enabled \
+  -Dandroid-libbacktrace=disabled \
   %{nil}
 %meson_build
 
