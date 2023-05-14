@@ -63,13 +63,13 @@
 
 Name:           mesa
 Summary:        Mesa graphics libraries from nouveau nvk/main branch
-%global ver 23.2.0
-Version:        %{lua:ver = string.gsub(rpm.expand("%{ver}"), "-", "~"); print(ver)}
+%global ver nvk-main
+Version:        23.2.0
 Release:        %autorelease
 License:        MIT
 URL:            http://www.mesa3d.org
 
-Source0:        https://gitlab.freedesktop.org/nouveau/mesa/-/archive/nvk/main/mesa-nvk-main.tar.bz2
+Source0:        https://gitlab.freedesktop.org/nouveau/mesa/-/archive/nvk/main/mesa-nvk-main.tar.gz
 # src/gallium/auxiliary/postprocess/pp_mlaa* have an ... interestingly worded license.
 # Source1 contains email correspondence clarifying the license terms.
 # Fedora opts to ignore the optional part of clause 2 and treat that code as 2 clause BSD.
