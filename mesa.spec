@@ -1,10 +1,10 @@
 ## START: Set by rpmautospec
 ## (rpmautospec version 0.3.5)
 ## RPMAUTOSPEC: autorelease, autochangelog
-#%define autorelease(e:s:pb:n) %{?-p:0.}%{lua:
-#    release_number = 3;
-#    base_release_number = tonumber(rpm.expand("%{?-b*}%{!?-b:1}"));
-#    print(release_number + base_release_number - 1);
+%define autorelease(e:s:pb:n) %{?-p:0.}%{lua:
+   release_number = 1;
+    base_release_number = tonumber(rpm.expand("%{?-b*}%{!?-b:1}"));
+    print(release_number + base_release_number - 1);
 }%{?-e:.%{-e*}}%{?-s:.%{-s*}}%{!?-n:%{?dist}}
 ## END: Set by rpmautospec
 
@@ -49,7 +49,6 @@
 %global with_r300 1
 %global with_r600 1
 %endif
-%global with_radeonsi 1
 %global with_vmware 1
 %endif
 
@@ -57,6 +56,7 @@
 %bcond_without valgrind
 %else
 %bcond_with valgrind
+%global with_radeonsi 1
 %endif
 
 %global vulkan_drivers swrast%{?base_vulkan}%{?platform_vulkan}
@@ -65,7 +65,7 @@ Name:           mesa
 Summary:        Mesa graphics libraries from nouveau nvk/main branch
 %global ver 23.2.0
 Version:        %{lua:ver = string.gsub(rpm.expand("%{ver}"), "-", "~"); print(ver)}
-Release:        1%{?dist}
+Release:        %autorelease
 License:        MIT
 URL:            http://www.mesa3d.org
 
@@ -646,7 +646,7 @@ popd
 %endif
 
 %changelog
-* Mon May 12 2023 EliasOfWaffle <eliascontato@protonmail.com> - nvk-main
+* Mon May 12 2023 EliasOfWaffle <eliascontato@protonmail.com> - 23.2.0
 - Move to Nouveau Mesa3d Repo 
 - Build experimental Nouveau Vulkan Driver.
 - Enable ZSTD compression
