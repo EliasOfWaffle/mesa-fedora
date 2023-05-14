@@ -69,7 +69,7 @@ Release:        1%{?dist}
 License:        MIT
 URL:            http://www.mesa3d.org
 
-Source0:        https://gitlab.freedesktop.org/nouveau/mesa/-/archive/nvk/main/mesa-nvk-main.tar.gz
+Source0:        http://gitlab.freedesktop.org/nouveau/mesa/-/archive/nvk/main/mesa-nvk-main.tar.bz2
 # src/gallium/auxiliary/postprocess/pp_mlaa* have an ... interestingly worded license.
 # Source1 contains email correspondence clarifying the license terms.
 # Fedora opts to ignore the optional part of clause 2 and treat that code as 2 clause BSD.
