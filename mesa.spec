@@ -63,7 +63,7 @@
 
 Name:           mesa
 Summary:        Mesa graphics libraries from nouveau nvk/main branch
-%global ver nvk-main
+%global ver 23.2.0
 Version:        %{lua:ver = string.gsub(rpm.expand("%{ver}"), "-", "~"); print(ver)}
 Release:        1%{?dist}
 License:        MIT
