@@ -16,7 +16,7 @@
 %global without_opencl 1
 %endif
 %endif
-%global base_vulkan ,amd
+%global base_vulkan ,amd,nouveau-experimental
 %endif
 
 %ifarch %{ix86} x86_64
@@ -63,18 +63,16 @@
 %global with_vulkan_overlay 1
 %global with_gallium_extra_hud 1
 
-%global commit 6005d28249c92c5fa0f7384353f95f18fb33a17b
-%global shortcommit %(c=%{commit}; echo ${c:0:7})
-
 Name:           mesa
 Summary:        Mesa graphics libraries
 Version:        23.2.0
-Release: 0.6.git%{shortcommit}%{?dist}
-
+Release:        %autorelease
 License:        MIT
 URL:            http://www.mesa3d.org
 
-Source0:        %{name}-%{shortcommit}.tar.xz
+%global ver nvk-main 
+
+Source0:        https://gitlab.freedesktop.org/nouveau/mesa/-/archive/nvk/main/mesa-nvk-main.tar.gz
 # src/gallium/auxiliary/postprocess/pp_mlaa* have an ... interestingly worded license.
 # Source1 contains email correspondence clarifying the license terms.
 # Fedora opts to ignore the optional part of clause 2 and treat that code as 2 clause BSD.
@@ -401,6 +399,8 @@ export RUSTFLAGS="%build_rustflags"
   -Dvalgrind=%{?with_valgrind:enabled}%{!?with_valgrind:disabled} \
   -Dbuild-tests=false \
   -Dselinux=true \
+  -Dzstd=true \
+  -Dandroid-libbacktrace=disabled \  
 %if %{with videocodecs}
   -Dvideo-codecs=h264dec,h264enc,h265dec,h265enc,vc1dec \
 %endif
@@ -640,6 +640,8 @@ popd
 %{_libdir}/libvulkan_radeon.so
 %{_datadir}/drirc.d/00-radv-defaults.conf
 %{_datadir}/vulkan/icd.d/radeon_icd.*.json
+%{_libdir}/libvulkan_nouveau.so
+%{_datadir}/vulkan/icd.d/nouveau_icd.*.json
 %ifarch %{ix86} x86_64
 %{_libdir}/libvulkan_intel.so
 %{_datadir}/vulkan/icd.d/intel_icd.*.json
