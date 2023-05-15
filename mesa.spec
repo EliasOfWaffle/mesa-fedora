@@ -33,6 +33,7 @@
 %global with_iris   1
 %global with_xa     1
 %global platform_vulkan ,intel,intel_hasvk
+%global intel_overlay 1
 %endif
 
 %ifarch aarch64
@@ -391,7 +392,7 @@ export RUSTFLAGS="%build_rustflags"
 %endif
   -Dgallium-extra-hud=%{?with_gallium_extra_hud:true}%{!?with_gallium_extra_hud:false} \
   -Dvulkan-drivers=%{?vulkan_drivers} \
-  -Dvulkan-layers=intel-nullhw,device-select%{?with_vulkan_overlay:,overlay} \
+  -Dvulkan-layers=%{?with_intel_overlay:,intel_nullhw},device-select%{?with_vulkan_overlay:,overlay} \
   -Dshared-glapi=enabled \
   -Dgles1=disabled \
   -Dgles2=enabled \
