@@ -392,7 +392,7 @@ export RUSTFLAGS="%build_rustflags"
 %endif
   -Dgallium-extra-hud=%{?with_gallium_extra_hud:true}%{!?with_gallium_extra_hud:false} \
   -Dvulkan-drivers=%{?vulkan_drivers} \
-  -Dvulkan-layers=%{?with_intel_overlay:,intel_nullhw},device-select%{?with_vulkan_overlay:,overlay} \
+  -Dvulkan-layers=%{?with_intel_overlay:intel_nullhw},device-select%{?with_vulkan_overlay:,overlay} \
   -Dshared-glapi=enabled \
   -Dgles1=disabled \
   -Dgles2=enabled \
