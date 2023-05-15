@@ -1,6 +1,6 @@
 %bcond_with videocodecs
 %global source_date_epoch_from_changelog 0
-
+### Author: https://copr.fedorainfracloud.org/coprs/che/ Che
 %ifnarch s390x
 %global with_hardware 1
 %global with_vulkan_hw 1
