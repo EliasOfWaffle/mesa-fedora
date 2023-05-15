@@ -407,8 +407,8 @@ export RUSTFLAGS="%build_rustflags"
   -Dvalgrind=%{?with_valgrind:enabled}%{!?with_valgrind:disabled} \
   -Dbuild-tests=false \
   -Dselinux=true \
-  -Dzstd=true \
-  -Dandroid-libbacktrace=disabled \  
+  -Dzstd=enabled \
+  -Dandroid-libbacktrace=disabled \
 %if %{with videocodecs}
   -Dvideo-codecs=h264dec,h264enc,h265dec,h265enc,vc1dec \
 %endif
