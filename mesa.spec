@@ -1,3 +1,11 @@
+## RPMAUTOSPEC: autorelease, autochangelog
+%define autorelease(e:s:pb:n) %{?-p:0.}%{lua:
+   release_number = 1;
+    base_release_number = tonumber(rpm.expand("%{?-b*}%{!?-b:1}"));
+    print(release_number + base_release_number - 1);
+}%{?-e:.%{-e*}}%{?-s:.%{-s*}}%{!?-n:%{?dist}}
+## END: Set by rpmautospec
+
 %bcond_with videocodecs
 %global source_date_epoch_from_changelog 0
 ### Author: https://copr.fedorainfracloud.org/coprs/che/ Che
@@ -351,7 +359,7 @@ Obsoletes:      mesa-vulkan-devel < %{?epoch:%{epoch}:}%{version}-%{release}
 The drivers with support for the Vulkan API.
 
 %prep
-%autosetup -n mesa-%{shortcommit} -p1
+%autosetup -n mesa-nvk-main -p1
 cp %{SOURCE1} docs/
 
 %build
