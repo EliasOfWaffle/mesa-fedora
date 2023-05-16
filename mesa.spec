@@ -115,7 +115,7 @@ BuildRequires:  pkgconfig(xcb-xfixes)
 BuildRequires:  pkgconfig(xcb-randr)
 BuildRequires:  pkgconfig(libunwind)
 BuildRequires:  pkgconfig(libzstd)
-
+BuildRequires:  lm_sensors-devel
 BuildRequires:  pkgconfig(xrandr) >= 1.3
 BuildRequires:  bison
 BuildRequires:  flex
