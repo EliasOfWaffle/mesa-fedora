@@ -26,6 +26,7 @@
 %global with_i915   1
 %global with_iris   1
 %global with_xa     1
+%global with_r300   0
 %global platform_vulkan ,intel,intel_hasvk
 %endif
 
