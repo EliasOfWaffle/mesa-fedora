@@ -367,9 +367,9 @@ cp %{SOURCE1} docs/
 export RUSTFLAGS="%build_rustflags"
 export CC=clang 
 export CXX=clang++
-export CC_LD=ld.lld
-export CXX_LD=ld.lld
-export CX_LD=ld.lld
+export CC_LD=lld
+export CXX_LD=lld
+export CX_LD=lld
 export AR=llvm-ar
 export NM=llvm-nm 
 export STRIP=llvm-strip
