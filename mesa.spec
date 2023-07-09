@@ -85,6 +85,7 @@ Source1:        Mesa-MLAA-License-Clarification-Email.txt
 
 BuildRequires:  meson >= 0.45
 BuildRequires:  gcc
+BuildRequires:  lld
 BuildRequires:  llvm
 BuildRequires:  clang
 BuildRequires:  gcc-c++
@@ -380,6 +381,7 @@ export READELF=llvm-readelf
 %meson \
   -Dplatforms=x11,wayland \
   -Db_lto=true \
+  -Degl-native-platform=x11,wayland,drm
   -Db_lto_mode=default \
   -Ddri3=enabled \
   -Dosmesa=true \
