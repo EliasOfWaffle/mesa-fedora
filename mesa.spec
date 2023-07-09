@@ -381,7 +381,6 @@ export READELF=llvm-readelf
 %meson \
   -Dplatforms=x11,wayland \
   -Db_lto=true \
-  -Degl-native-platform=x11,wayland,drm
   -Db_lto_mode=default \
   -Ddri3=enabled \
   -Dosmesa=true \
