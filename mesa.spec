@@ -381,7 +381,7 @@ export READELF=llvm-readelf
 %meson \
   -Dplatforms=x11,wayland \
   -Db_lto=true \
-  -Db_lto_mode=default \
+  -Db_lto_mode=thin \
   -Ddri3=enabled \
   -Dosmesa=true \
 %if 0%{?with_hardware}
@@ -422,7 +422,6 @@ export READELF=llvm-readelf
   -Dxlib-lease=enabled \
   -Dzstd=enabled \
   -Dvulkan-beta=true \
-  -Dstatic-libclc=all \
   -Dglvnd=true \
 %if %{with videocodecs}
   -Dvideo-codecs=h264dec,h264enc,h265dec,h265enc,vc1dec \
