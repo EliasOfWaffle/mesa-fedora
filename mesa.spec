@@ -71,7 +71,7 @@
 Name:           mesa
 Summary:        Mesa graphics libraries
 Version:        23.2.0
-Release:        .git%{?dist}
+Release:        1.git%{?dist}
 
 License:        MIT
 URL:            http://www.mesa3d.org
@@ -383,6 +383,7 @@ export READELF=llvm-readelf
   -Dplatforms=x11,wayland \
   -Db_lto=true \
   -Ddri3=enabled \
+  -Degl-native-platform="x11","wayland","drm" \
   -Dosmesa=true \
 %if 0%{?with_hardware}
   -Dgallium-drivers=swrast,virgl,nouveau%{?with_r300:,r300}%{?with_crocus:,crocus}%{?with_i915:,i915}%{?with_iris:,iris}%{?with_vmware:,svga}%{?with_radeonsi:,radeonsi}%{?with_r600:,r600}%{?with_freedreno:,freedreno}%{?with_etnaviv:,etnaviv}%{?with_tegra:,tegra}%{?with_vc4:,vc4}%{?with_v3d:,v3d}%{?with_kmsro:,kmsro}%{?with_lima:,lima}%{?with_panfrost:,panfrost}%{?with_vulkan_hw:,zink} \
@@ -422,6 +423,7 @@ export READELF=llvm-readelf
   -Dxlib-lease=enabled \
   -Dzstd=enabled \
   -Dvulkan-beta=true \
+  -Dstatic-libclc=all \
   -Dglvnd=true \
 %if %{with videocodecs}
   -Dvideo-codecs=h264dec,h264enc,h265dec,h265enc,vc1dec \
