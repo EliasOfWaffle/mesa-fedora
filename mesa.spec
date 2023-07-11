@@ -86,6 +86,7 @@ Source1:        Mesa-MLAA-License-Clarification-Email.txt
 BuildRequires:  meson >= 0.45
 BuildRequires:  gcc
 BuildRequires:  lld
+BuildRequires:  mold
 BuildRequires:  llvm
 BuildRequires:  clang
 BuildRequires:  gcc-c++
@@ -368,9 +369,9 @@ cp %{SOURCE1} docs/
 export RUSTFLAGS="%build_rustflags"
 export CC=clang 
 export CXX=clang++
-export CC_LD=lld
-export CXX_LD=lld
-export CX_LD=lld
+export CC_LD=mold
+export CXX_LD=mold
+export CX_LD=mold
 export AR=llvm-ar
 export NM=llvm-nm 
 export STRIP=llvm-strip
@@ -381,7 +382,6 @@ export READELF=llvm-readelf
 %meson \
   -Dplatforms=x11,wayland \
   -Db_lto=true \
-  -Db_lto_mode=thin \
   -Ddri3=enabled \
   -Dosmesa=true \
 %if 0%{?with_hardware}
