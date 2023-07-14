@@ -65,7 +65,7 @@ Name:           mesa
 Summary:        Mesa graphics libraries
 %global ver nvk-main
 Version:        23.2.0
-Release:        1%{dist}
+Release:        2%{dist}
 License:        MIT
 URL:            http://www.mesa3d.org
 
