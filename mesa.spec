@@ -424,8 +424,6 @@ export READELF=llvm-readelf
   -Dxlib-lease=enabled \
   -Dzstd=enabled \
   -Dvulkan-beta=true \
-  -Dstatic-libclc=all \
-  -Dglvnd=true \
 %if %{with videocodecs}
   -Dvideo-codecs=h264dec,h264enc,h265dec,h265enc,vc1dec \
 %endif
