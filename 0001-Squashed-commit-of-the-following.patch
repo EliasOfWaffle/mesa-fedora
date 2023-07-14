@@ -1,0 +1,39 @@
+From b24e37e53d59d3808262193b5f60a1c2f1ff7f2d Mon Sep 17 00:00:00 2001
+From: EliasOfWaffle <eliascontato@protonmail.com>
+Date: Fri, 14 Jul 2023 15:07:05 -0300
+Subject: [PATCH] Squashed commit of the following:
+
+commit 4523e6eb52543998f1eead0950e54f6f716f3b54
+Author: Semjon Kravtsenko <semjon.00@gmail.com>
+Date:   Wed Jun 21 10:50:44 2023 +0300
+
+    glx: Assign unique serial number to GLXBadFBConfig error
+
+    Fixes: e89e1f5049d ("glx: Fix error handling yet again in CreateContextAttribs")
+    Closes: https://gitlab.freedesktop.org/mesa/mesa/-/issues/9171
+    Tested-by: yan12125
+    Co-authored-by: XRevan86
+    Part-of: <https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/23762>
+---
+ src/glx/create_context.c | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/src/glx/create_context.c b/src/glx/create_context.c
+index f89ceec30be..1c2bbb1cfd1 100644
+--- a/src/glx/create_context.c
++++ b/src/glx/create_context.c
+@@ -115,6 +115,11 @@ glXCreateContextAttribsARB(Display *dpy, GLXFBConfig config,
+ #endif
+ 
+    if (gc == NULL) {
++      /* Increment dpy->request in order to give a unique serial number to the error.
++       * This may break creating contexts on some video cards, if libx11 <1.7.4 is used.
++       * However, this fixes creating contexts (on some video cards) if libx11 >=1.7.4 is used.
++       */
++      XNoOp(dpy);
+       /* -1 isn't a legal XID, which is sort of the point, we've failed
+        * before we even got to XID allocation.
+        */
+-- 
+2.41.0
+
