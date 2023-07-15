@@ -1,6 +1,6 @@
 %bcond_with videocodecs
 %global source_date_epoch_from_changelog 0
-
+%global toolchain clang
 %ifnarch s390x
 %global with_hardware 1
 %global with_vulkan_hw 1
@@ -65,32 +65,27 @@
 ## additional functionality not in the fedora standard packages
 %global with_vulkan_overlay 1
 %global with_gallium_extra_hud 1
-%global toolchain clang
-
 
 Name:           mesa
 Summary:        Mesa graphics libraries
-Version:        23.2.0
+Version:        23.3.0
 Release:        2.git%{?dist}
 
 License:        MIT
 URL:            http://www.mesa3d.org
 
-Source0:        https://gitlab.freedesktop.org/mesa/mesa/-/archive/main/mesa-main.tar.gz
-%global ver main 
+Source0:        %{name}-%{shortcommit}.tar.xz
 # src/gallium/auxiliary/postprocess/pp_mlaa* have an ... interestingly worded license.
 # Source1 contains email correspondence clarifying the license terms.
 # Fedora opts to ignore the optional part of clause 2 and treat that code as 2 clause BSD.
 Source1:        Mesa-MLAA-License-Clarification-Email.txt
-
 Patch1:         0001-Squashed-commit-of-the-following.patch
 
 BuildRequires:  meson >= 0.45
 BuildRequires:  gcc
-BuildRequires:  lld
-BuildRequires:  mold
 BuildRequires:  llvm
 BuildRequires:  clang
+BuildRequires:  mold
 BuildRequires:  gcc-c++
 BuildRequires:  gettext
 %if 0%{?with_hardware}
@@ -280,6 +275,10 @@ Summary:        Mesa gbm runtime library
 Provides:       libgbm
 Provides:       libgbm%{?_isa}
 Recommends:     %{name}-dri-drivers%{?_isa} = %{?epoch:%{epoch}:}%{version}-%{release}
+# If mesa-dri-drivers are installed, they must match in version. This is here to prevent using
+# older mesa-dri-drivers together with a newer mesa-libgbm and its dependants.
+# See https://bugzilla.redhat.com/show_bug.cgi?id=2193135 .
+Requires:       (%{name}-dri-drivers%{?_isa} = %{?epoch:%{epoch}:}%{version}-%{release} if %{name}-dri-drivers%{?_isa})
 
 %description libgbm
 %{summary}.
@@ -316,6 +315,10 @@ Provides:       libxatracker-devel%{?_isa}
 Summary:        Mesa shared glapi
 Provides:       libglapi
 Provides:       libglapi%{?_isa}
+# If mesa-dri-drivers are installed, they must match in version. This is here to prevent using
+# older mesa-dri-drivers together with a newer mesa-libglapi or its dependants.
+# See https://bugzilla.redhat.com/show_bug.cgi?id=2193135 .
+Requires:       (%{name}-dri-drivers%{?_isa} = %{?epoch:%{epoch}:}%{version}-%{release} if %{name}-dri-drivers%{?_isa})
 
 %description libglapi
 %{summary}.
@@ -363,28 +366,21 @@ Obsoletes:      mesa-vulkan-devel < %{?epoch:%{epoch}:}%{version}-%{release}
 The drivers with support for the Vulkan API.
 
 %prep
-%autosetup -n mesa-main -p1
+%autosetup -n mesa-%{shortcommit} -p1
 cp %{SOURCE1} docs/
 
 %build
 # ensure standard Rust compiler flags are set
 export RUSTFLAGS="%build_rustflags"
-export CC=clang 
-export CXX=clang++
 export CC_LD=mold
 export CXX_LD=mold
 export CX_LD=mold
-export AR=llvm-ar
-export NM=llvm-nm 
-export STRIP=llvm-strip
-export OBJCOPY=llvm-objcopy
-export OBJDUMP=llvm-objdump 
-export READELF=llvm-readelf
+export CC=clang
+export CXX=clang++
 
 %meson \
   -Dplatforms=x11,wayland \
-  -Db_lto=true \
-  -Ddri3=enabled \ 
+  -Ddri3=enabled \
   -Dosmesa=true \
 %if 0%{?with_hardware}
   -Dgallium-drivers=swrast,virgl,nouveau%{?with_r300:,r300}%{?with_crocus:,crocus}%{?with_i915:,i915}%{?with_iris:,iris}%{?with_vmware:,svga}%{?with_radeonsi:,radeonsi}%{?with_r600:,r600}%{?with_freedreno:,freedreno}%{?with_etnaviv:,etnaviv}%{?with_tegra:,tegra}%{?with_vc4:,vc4}%{?with_v3d:,v3d}%{?with_kmsro:,kmsro}%{?with_lima:,lima}%{?with_panfrost:,panfrost}%{?with_vulkan_hw:,zink} \
