@@ -70,11 +70,11 @@ Name:           mesa
 Summary:        Mesa graphics libraries
 Version:        23.3.0
 Release:        2.git%{?dist}
-
+%global ver main
 License:        MIT
 URL:            http://www.mesa3d.org
 
-Source0:        %{name}-%{shortcommit}.tar.xz
+Source0:       https://gitlab.freedesktop.org/mesa/mesa/-/archive/main/mesa-main.tar.gz
 # src/gallium/auxiliary/postprocess/pp_mlaa* have an ... interestingly worded license.
 # Source1 contains email correspondence clarifying the license terms.
 # Fedora opts to ignore the optional part of clause 2 and treat that code as 2 clause BSD.
@@ -366,7 +366,7 @@ Obsoletes:      mesa-vulkan-devel < %{?epoch:%{epoch}:}%{version}-%{release}
 The drivers with support for the Vulkan API.
 
 %prep
-%autosetup -n mesa-%{shortcommit} -p1
+%autosetup -n mesa-main -p1
 cp %{SOURCE1} docs/
 
 %build
