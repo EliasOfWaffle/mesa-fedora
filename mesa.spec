@@ -58,8 +58,8 @@
 
 Name:           mesa-amber
 Summary:        Mesa Amber DRI graphics libraries
-%global ver 21.3.9
-Version:        %{lua:ver = string.gsub(rpm.expand("%{ver}"), "-", "~"); print(ver)}
+%global ver amber
+Version:        21.3.9
 Release:        %autorelease
 License:        MIT
 URL:            http://www.mesa3d.org
