@@ -348,7 +348,7 @@ Obsoletes:      mesa-vulkan-devel < %{?epoch:%{epoch}:}%{version}-%{release}
 The drivers with support for the Vulkan API.
 
 %prep
-%autosetup -n %{name}-%{ver} -p1
+%autosetup -n %{name} -p1
 cp %{SOURCE1} docs/
 
 %build
