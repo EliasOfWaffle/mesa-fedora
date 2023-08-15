@@ -79,7 +79,6 @@ Source0:       https://gitlab.freedesktop.org/mesa/mesa/-/archive/main/mesa-main
 # Source1 contains email correspondence clarifying the license terms.
 # Fedora opts to ignore the optional part of clause 2 and treat that code as 2 clause BSD.
 Source1:        Mesa-MLAA-License-Clarification-Email.txt
-Patch1:         0001-Squashed-commit-of-the-following.patch
 
 BuildRequires:  meson >= 0.45
 BuildRequires:  gcc
