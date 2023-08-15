@@ -1,0 +1,52 @@
+From 2c93af9d599810960123c32309ccdae6c83b2b7b Mon Sep 17 00:00:00 2001
+From: EliasOfWaffle <eliascontato@protonmail.com>
+Date: Tue, 15 Aug 2023 20:33:21 -0300
+Subject: [PATCH] Squashed commit of the following:
+
+commit 3bc083121745ce5753b2d69502247e7980c053e4
+Author: Mike Blumenkrantz <michael.blumenkrantz@gmail.com>
+Date:   Tue Aug 15 12:21:24 2023 -0400
+
+    egl/wayland: don't block in swrast when updating buffers for zink
+
+    this is broken, let vulkan wsi handle buffer management
+
+    Fixes: 74451ed3f08 ("egl/wayland: wait for compositor to release shm buffers")
+
+commit 7498c248d03b85092d3fe9e38e786d257ece621e
+Author: Mike Blumenkrantz <michael.blumenkrantz@gmail.com>
+Date:   Tue Aug 15 12:07:36 2023 -0400
+
+    Revert "egl/wayland: Add image loader extension for swrast"
+
+    This reverts commit 45b9b0ba32c6a6eed388ff080f7eaf5a765fe970.
+---
+ src/egl/drivers/dri2/platform_wayland.c | 5 ++---
+ 1 file changed, 2 insertions(+), 3 deletions(-)
+
+diff --git a/src/egl/drivers/dri2/platform_wayland.c b/src/egl/drivers/dri2/platform_wayland.c
+index a30c58f388b..7e12393b782 100644
+--- a/src/egl/drivers/dri2/platform_wayland.c
++++ b/src/egl/drivers/dri2/platform_wayland.c
+@@ -2408,8 +2408,8 @@ swrast_update_buffers(struct dri2_egl_surface *dri2_surf)
+ 
+       /* wait for the compositor to release a buffer */
+       if (!dri2_surf->back) {
+-         if (wl_display_dispatch_queue(dri2_dpy->wl_dpy, dri2_surf->wl_queue) ==
+-             -1) {
++         bool error = zink || wl_display_dispatch_queue(dri2_dpy->wl_dpy, dri2_surf->wl_queue) == -1;
++         if (error) {
+             _eglError(EGL_BAD_ALLOC, "waiting for a free buffer failed");
+             return -1;
+          }
+@@ -2704,7 +2704,6 @@ static const __DRIkopperLoaderExtension kopper_loader_extension = {
+ static const __DRIextension *swrast_loader_extensions[] = {
+    &swrast_loader_extension.base,
+    &image_lookup_extension.base,
+-   &image_loader_extension.base,
+    &kopper_loader_extension.base,
+    NULL,
+ };
+-- 
+2.41.0
+
