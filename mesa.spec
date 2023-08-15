@@ -69,7 +69,7 @@
 Name:           mesa
 Summary:        Mesa graphics libraries
 Version:        23.3.0
-Release:        2.git%{?dist}
+Release:        3%{?dist}
 %global ver main
 License:        MIT
 URL:            http://www.mesa3d.org
