@@ -371,13 +371,14 @@ cp %{SOURCE1} docs/
 
 %build
 # ensure standard Rust compiler flags are set
+%define __ldflags %{nil}
 export RUSTFLAGS="%build_rustflags"
 export CC_LD=mold
 export CXX_LD=mold
 export CX_LD=mold
 export CC=clang
 export CXX=clang++
-
+	
 %meson \
   -Dplatforms=x11,wayland \
   -Ddri3=enabled \
@@ -400,7 +401,7 @@ export CXX=clang++
   -Dvulkan-drivers=%{?vulkan_drivers} \
   -Dvulkan-layers=intel-nullhw,device-select%{?with_vulkan_overlay:,overlay} \
   -Dshared-glapi=enabled \
-  -Dgles1=disabled \
+  -Dgles1=enabled \
   -Dgles2=enabled \
   -Dopengl=true \
   -Dgbm=enabled \
