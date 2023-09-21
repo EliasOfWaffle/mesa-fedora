@@ -374,9 +374,9 @@ The drivers with support for the Vulkan API.
 export RUSTFLAGS="%build_rustflags"
 export CC=clang
 export CXX=clang++
-export CC_LD=lld
-export CX_LD=lld
-export CXX_LD=lld
+export LD="${LD:-lld}"
+export CX_LD="$LD --undefined-version"
+export CXX_LD="$LD --undefined-version"
 export LLVM=1
 export STRIP=llvm-strip
 export NM=llvm-nm 
@@ -386,7 +386,6 @@ export OBJDUMP=llvm-objdump
 export OBJCOPY=llvm-objcopy
 export READOBJ=llvm-readobj
 export READELF=llvm-readelf
-
 %meson \
   -Dplatforms=x11,wayland \
   -Ddri3=enabled \
@@ -434,7 +433,7 @@ export READELF=llvm-readelf
   -Dvideo-codecs=h264dec,h264enc,h265dec,h265enc,vc1dec \
 %endif
   %{nil}
-%meson_build
+%meson_build 
 
 %install
 %meson_install
