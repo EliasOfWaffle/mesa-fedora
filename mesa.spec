@@ -69,7 +69,7 @@
 Name:           mesa
 Summary:        Mesa graphics libraries
 Version:        23.3.0
-Release:        4%{?dist}
+Release:        6%{?dist}
 %global ver main
 License:        MIT
 URL:            http://www.mesa3d.org
@@ -78,13 +78,13 @@ Source0:       https://gitlab.freedesktop.org/mesa/mesa/-/archive/main/mesa-main
 # src/gallium/auxiliary/postprocess/pp_mlaa* have an ... interestingly worded license.
 # Source1 contains email correspondence clarifying the license terms.
 # Fedora opts to ignore the optional part of clause 2 and treat that code as 2 clause BSD.
-Source1:        Mesa-MLAA-License-Clarification-Email.txt
-Patch1:         0001-Squashed-commit-of-the-following.patch
+#Source1:        Mesa-MLAA-License-Clarification-Email.txt
+#Patch1:         0001-Squashed-commit-of-the-following.patch
 BuildRequires:  meson >= 0.45
 BuildRequires:  gcc
 BuildRequires:  llvm
 BuildRequires:  clang
-BuildRequires:  mold
+BuildRequires:  lld
 BuildRequires:  gcc-c++
 BuildRequires:  gettext
 %if 0%{?with_hardware}
@@ -367,21 +367,31 @@ The drivers with support for the Vulkan API.
 
 %prep
 %autosetup -n mesa-main -p1
-cp %{SOURCE1} docs/
+# cp {SOURCE1} docs/
 
 %build
 # ensure standard Rust compiler flags are set
 export RUSTFLAGS="%build_rustflags"
-export CC_LD=mold
-export CXX_LD=mold
-export CX_LD=mold
 export CC=clang
 export CXX=clang++
+export CC_LD=lld
+export CX_LD=lld
+export CXX_LD=lld
+export LLVM=1
+export STRIP=llvm-strip
+export NM=llvm-nm 
+export AR=llvm-ar
+export SIZE=llvm-size
+export OBJDUMP=llvm-objdump
+export OBJCOPY=llvm-objcopy
+export READOBJ=llvm-readobj
+export READELF=llvm-readelf
 
 %meson \
   -Dplatforms=x11,wayland \
   -Ddri3=enabled \
   -Dosmesa=true \
+  -Db_lto=enabled \
 %if 0%{?with_hardware}
   -Dgallium-drivers=swrast,virgl,nouveau%{?with_r300:,r300}%{?with_crocus:,crocus}%{?with_i915:,i915}%{?with_iris:,iris}%{?with_vmware:,svga}%{?with_radeonsi:,radeonsi}%{?with_r600:,r600}%{?with_freedreno:,freedreno}%{?with_etnaviv:,etnaviv}%{?with_tegra:,tegra}%{?with_vc4:,vc4}%{?with_v3d:,v3d}%{?with_kmsro:,kmsro}%{?with_lima:,lima}%{?with_panfrost:,panfrost}%{?with_vulkan_hw:,zink} \
 %else
@@ -408,7 +418,7 @@ export CXX=clang++
   -Degl=enabled \
   -Dglvnd=true \
 %if 0%{?with_intel_clc}
-  -Dintel-clc=enabled \
+  -Dintel-clc=disabled \
 %endif
   -Dmicrosoft-clc=disabled \
   -Dllvm=enabled \
@@ -449,7 +459,7 @@ done
 popd
 
 %files filesystem
-%doc docs/Mesa-MLAA-License-Clarification-Email.txt
+#doc docs/Mesa-MLAA-License-Clarification-Email.txt
 %dir %{_libdir}/dri
 %if 0%{?with_hardware}
 %if 0%{?with_vdpau}
@@ -682,3 +692,4 @@ popd
 %endif
 
 %changelog
+
