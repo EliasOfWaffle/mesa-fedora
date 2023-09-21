@@ -375,6 +375,7 @@ export RUSTFLAGS="%build_rustflags"
 export CC=clang
 export CXX=clang++
 export LD="${LD:-lld}"
+export CC_LD="$LD --undefined-version"
 export CX_LD="$LD --undefined-version"
 export CXX_LD="$LD --undefined-version"
 export LLVM=1
@@ -386,6 +387,7 @@ export OBJDUMP=llvm-objdump
 export OBJCOPY=llvm-objcopy
 export READOBJ=llvm-readobj
 export READELF=llvm-readelf
+export RANLIB=llvm-ranlib
 %meson \
   -Dplatforms=x11,wayland \
   -Ddri3=enabled \
