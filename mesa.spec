@@ -370,6 +370,7 @@ The drivers with support for the Vulkan API.
 # cp {SOURCE1} docs/
 
 %build
+%undefine _ld_as_needed
 # ensure standard Rust compiler flags are set
 export RUSTFLAGS="%build_rustflags"
 export CC=clang
@@ -388,8 +389,6 @@ export OBJCOPY=llvm-objcopy
 export READOBJ=llvm-readobj
 export READELF=llvm-readelf
 export RANLIB=llvm-ranlib
-
-%{build_ldflags} -Wl,--undefined-version
 
 %meson \
   -Dplatforms=x11,wayland \
@@ -414,7 +413,7 @@ export RANLIB=llvm-ranlib
   -Dvulkan-drivers=%{?vulkan_drivers} \
   -Dvulkan-layers=intel-nullhw,device-select%{?with_vulkan_overlay:,overlay} \
   -Dshared-glapi=enabled \
-  -Dgles1=disabled \
+  -Dgles1=enabled \
   -Dgles2=enabled \
   -Dopengl=true \
   -Dgbm=enabled \
