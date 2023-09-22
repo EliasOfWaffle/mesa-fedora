@@ -374,10 +374,10 @@ The drivers with support for the Vulkan API.
 export RUSTFLAGS="%build_rustflags"
 export CC=clang
 export CXX=clang++
-export LD="${LD:-lld}"
-export CC_LD="$LD --undefined-version"
-export CX_LD="$LD --undefined-version"
-export CXX_LD="$LD --undefined-version"
+#export LD="${LD:-lld}"
+export CC_LD=lld
+export CX_LD=lld
+export CXX_LD=lld
 export LLVM=1
 export STRIP=llvm-strip
 export NM=llvm-nm 
@@ -388,6 +388,9 @@ export OBJCOPY=llvm-objcopy
 export READOBJ=llvm-readobj
 export READELF=llvm-readelf
 export RANLIB=llvm-ranlib
+
+%_build_id_flags -Wl,--undefined-version
+
 %meson \
   -Dplatforms=x11,wayland \
   -Ddri3=enabled \
