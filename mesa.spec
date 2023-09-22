@@ -389,7 +389,7 @@ export READOBJ=llvm-readobj
 export READELF=llvm-readelf
 export RANLIB=llvm-ranlib
 
-%_build_id_flags -Wl,--undefined-version
+%{build_ldflags} -Wl,--undefined-version
 
 %meson \
   -Dplatforms=x11,wayland \
