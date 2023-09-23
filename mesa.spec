@@ -370,7 +370,7 @@ The drivers with support for the Vulkan API.
 # cp {SOURCE1} docs/
 
 %build
-%undefine _ld_as_needed
+%global _lto_cflags %nil
 # ensure standard Rust compiler flags are set
 export RUSTFLAGS="%build_rustflags"
 export CC=clang
@@ -394,7 +394,7 @@ export RANLIB=llvm-ranlib
   -Dplatforms=x11,wayland \
   -Ddri3=enabled \
   -Dosmesa=true \
-  -Db_lto=true \
+  -Db_lto=false \
 %if 0%{?with_hardware}
   -Dgallium-drivers=swrast,virgl,nouveau%{?with_r300:,r300}%{?with_crocus:,crocus}%{?with_i915:,i915}%{?with_iris:,iris}%{?with_vmware:,svga}%{?with_radeonsi:,radeonsi}%{?with_r600:,r600}%{?with_freedreno:,freedreno}%{?with_etnaviv:,etnaviv}%{?with_tegra:,tegra}%{?with_vc4:,vc4}%{?with_v3d:,v3d}%{?with_kmsro:,kmsro}%{?with_lima:,lima}%{?with_panfrost:,panfrost}%{?with_vulkan_hw:,zink} \
 %else
