@@ -16,7 +16,7 @@
 %global without_opencl 1
 %endif
 %endif
-%global base_vulkan ,amd
+%global base_vulkan ,amd,nouveau-experimental
 %endif
 
 %ifarch %{ix86} x86_64
