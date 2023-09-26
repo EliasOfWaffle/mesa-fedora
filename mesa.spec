@@ -75,7 +75,7 @@ License:        MIT
 URL:            http://www.mesa3d.org
 
 Source0:       https://gitlab.freedesktop.org/mesa/mesa/-/archive/main/mesa-main.tar.gz
-Patch0:        0001-Rebase-all-commits-from-Antonino-Maniscalco.patch
+Patch0:        0001-Squashed-commit-of-the-following.patch
 # src/gallium/auxiliary/postprocess/pp_mlaa* have an ... interestingly worded license.
 # Source1 contains email correspondence clarifying the license terms.
 # Fedora opts to ignore the optional part of clause 2 and treat that code as 2 clause BSD.
