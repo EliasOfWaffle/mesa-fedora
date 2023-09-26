@@ -671,7 +671,7 @@ popd
 %{_datadir}/drirc.d/00-radv-defaults.conf
 %{_datadir}/vulkan/icd.d/radeon_icd.*.json
 %{_libdir}/libvulkan_nouveau.so
-%{_datadir}vulkan/icd.d/nouveau_icd.*.json
+%{_datadir}/vulkan/icd.d/nouveau_icd.*.json
 %ifarch %{ix86} x86_64
 %{_libdir}/libvulkan_intel.so
 %{_datadir}/vulkan/icd.d/intel_icd.*.json
