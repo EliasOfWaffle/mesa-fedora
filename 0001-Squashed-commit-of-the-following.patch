@@ -1,0 +1,1409 @@
+From 7cd9d76861f1ae05092d19ec925132f0fe2ec7d2 Mon Sep 17 00:00:00 2001
+From: EliasOfWaffle <eliascontato@protonmail.com>
+Date: Wed, 11 Oct 2023 19:09:04 -0300
+Subject: [PATCH] Squashed commit of the following:
+
+commit 599100b091f8f0b0bbeb4bffda1bb0d88eb9244e
+Author: Karol Herbst <kherbst@redhat.com>
+Date:   Thu Sep 28 17:31:38 2023 +0200
+
+    llvmpipe: support non 1D/2D unnormalized image coordinates
+
+    While technically not required by Vulkan, it's very useful for layering CL
+    on top of Vulkan to have this supported on all image types.
+
+    Signed-off-by: Karol Herbst <kherbst@redhat.com>
+
+commit ab62c12cb7d98a39876f25dc31561f58cb5e6840
+Author: Mike Blumenkrantz <michael.blumenkrantz@gmail.com>
+Date:   Wed Sep 27 09:16:01 2023 -0400
+
+    zink: eliminate samplers from no-sampler CL texops
+
+    samplers aren't guaranteed to be provided by no-sampler ops in CL,
+    so flagging them as extant may read from a null sampler and explode
+
+    instead just pass the image through directly in the spirv
+
+commit 186e724aea55e46fecdd27a13508ed893187c732
+Author: Karol Herbst <git@karolherbst.de>
+Date:   Tue Sep 19 14:44:26 2023 +0200
+
+    pipe-loader: allow to load multiple zink devices
+
+    Rusticl needs to be able to create a zink_screen on all renderer nodes.
+    This adds the infrastructure of doing so.
+
+    Signed-off-by: Karol Herbst <kherbst@redhat.com>
+    Acked-by: Mike Blumenkrantz <michael.blumenkrantz@gmail.com>
+
+commit 702b40aef6a038faa63d6b002053693e5f3374c6
+Author: Karol Herbst <git@karolherbst.de>
+Date:   Tue Sep 19 14:44:26 2023 +0200
+
+    rusticl: enable zink
+
+    Signed-off-by: Karol Herbst <kherbst@redhat.com>
+
+commit 80f76c44a3cd1afb8989212ce52b13fc926c03fc
+Author: Karol Herbst <git@karolherbst.de>
+Date:   Tue Sep 19 14:44:26 2023 +0200
+
+    rusticl/mesa/screen,device: add driver_name
+
+    Signed-off-by: Karol Herbst <kherbst@redhat.com>
+
+commit 6b79b31e6fa108c92e9a7ae7b724b86a34925de1
+Author: Karol Herbst <kherbst@redhat.com>
+Date:   Fri Sep 29 10:53:53 2023 +0200
+
+    zink: fix load/store scratch offsets
+
+    The offset is originally in bytes, so we have to handle it just like
+    shared load/stores.
+
+    Fixes: ddc5c304899 ("zink: handle global and scratch vars")
+
+commit 63883bddf2278e1a5ddb811570af34d8dbcbf5cb
+Author: Karol Herbst <git@karolherbst.de>
+Date:   Tue Sep 19 14:44:26 2023 +0200
+
+    zink: fix RA textures
+
+    Signed-off-by: Karol Herbst <kherbst@redhat.com>
+    Reviewed-by: Mike Blumenkrantz <michael.blumenkrantz@gmail.com>
+
+commit 9c93c3d1e9f0d13441b882dc69b42d03ede8e9d6
+Author: Karol Herbst <git@karolherbst.de>
+Date:   Tue Sep 19 14:44:26 2023 +0200
+
+    zink: implement remaining pack ops via bitcast
+
+    Signed-off-by: Karol Herbst <kherbst@redhat.com>
+    Reviewed-by: Mike Blumenkrantz <michael.blumenkrantz@gmail.com>
+
+commit 701b2593864026444fa6d3f1e7f36a29d7f4f8bc
+Author: Karol Herbst <git@karolherbst.de>
+Date:   Tue Sep 19 14:44:26 2023 +0200
+
+    zink: support samplers with unnormalized_coords
+
+    Signed-off-by: Karol Herbst <kherbst@redhat.com>
+
+commit 288975a76ef13eaa35761a25e6c7813798eb14fb
+Author: Mike Blumenkrantz <michael.blumenkrantz@gmail.com>
+Date:   Tue Sep 19 14:44:26 2023 +0200
+
+    zink: add set_global_binding
+
+    This requires VK_KHR_buffer_device_address which is the only sane way of
+    implementing CL global memory.
+
+    Signed-off-by: Karol Herbst <kherbst@redhat.com>
+    Reviewed-by: Mike Blumenkrantz <michael.blumenkrantz@gmail.com>
+
+commit 7591e9713443b54a97c7caeef4da922644618e96
+Author: Karol Herbst <kherbst@redhat.com>
+Date:   Tue Sep 19 14:44:26 2023 +0200
+
+    zink: make spirv_builder_emit_*op compatible with spec constants
+
+    This way we can use those builder functions to emit spec constant
+    operations.
+
+    Signed-off-by: Karol Herbst <kherbst@redhat.com>
+    Reviewed-by: Mike Blumenkrantz <michael.blumenkrantz@gmail.com>
+
+commit 5ed21e61ffb7518bcf69d55c4986f56c8cdaed0f
+Author: Karol Herbst <kherbst@redhat.com>
+Date:   Tue Sep 19 14:44:26 2023 +0200
+
+    zink: support more nir opcodes
+
+    There are sadly no SPIRV variants for hadd or iadd_sat we can use, so
+    lower those.
+
+    Signed-off-by: Karol Herbst <kherbst@redhat.com>
+    Reviewed-by: Mike Blumenkrantz <michael.blumenkrantz@gmail.com>
+
+commit 8e8225edf8ca7d5f432ba9853d3195c14f29f0a3
+Author: Karol Herbst <git@karolherbst.de>
+Date:   Tue Sep 19 14:44:26 2023 +0200
+
+    zink: variable shared mem support
+
+    Signed-off-by: Karol Herbst <kherbst@redhat.com>
+    Reviewed-by: Mike Blumenkrantz <michael.blumenkrantz@gmail.com>
+
+commit 319cf0c172c7501af2ff5d006709ac279637be4f
+Author: Karol Herbst <git@karolherbst.de>
+Date:   Tue Sep 19 14:44:26 2023 +0200
+
+    zink: refactor spec constant handling
+
+    This makes it simpler to add more spec constants
+
+    Signed-off-by: Karol Herbst <kherbst@redhat.com>
+    Reviewed-by: Mike Blumenkrantz <michael.blumenkrantz@gmail.com>
+
+commit 503d3d29724b1d539df22414179f8c57ea57f1ea
+Author: Karol Herbst <git@karolherbst.de>
+Date:   Tue Sep 19 14:44:26 2023 +0200
+
+    zink: pass entire pipe_grid_info into zink_program_update_compute_pipeline_state
+
+    Signed-off-by: Karol Herbst <kherbst@redhat.com>
+    Reviewed-by: Mike Blumenkrantz <michael.blumenkrantz@gmail.com>
+
+commit be597670cd4e40a2ff6731c541900515f9568fde
+Author: Karol Herbst <git@karolherbst.de>
+Date:   Tue Sep 19 14:44:26 2023 +0200
+
+    zink: copy has_variable_shared_mem cs property
+
+    Signed-off-by: Karol Herbst <kherbst@redhat.com>
+    Reviewed-by: Mike Blumenkrantz <michael.blumenkrantz@gmail.com>
+
+commit a9b2c7cf3849e55ef3990b5db6de9e588299e13e
+Author: Karol Herbst <git@karolherbst.de>
+Date:   Tue Sep 19 14:44:26 2023 +0200
+
+    zink: implement get_compute_state_info
+
+    Signed-off-by: Karol Herbst <kherbst@redhat.com>
+    Reviewed-by: Mike Blumenkrantz <michael.blumenkrantz@gmail.com>
+
+commit 3538a5c94afd69c78b8916932a93d2b3fb83cdce
+Author: Mike Blumenkrantz <michael.blumenkrantz@gmail.com>
+Date:   Tue Sep 26 15:38:29 2023 -0400
+
+    zink: always clamp shader stage in descriptor handling
+
+    otherwise KERNEL leaks through and explodes
+
+    cc: mesa-stable
+---
+ docs/features.txt                             | 12 ++--
+ .../auxiliary/pipe-loader/pipe_loader.c       |  7 +-
+ .../auxiliary/pipe-loader/pipe_loader.h       | 23 +++++--
+ .../auxiliary/pipe-loader/pipe_loader_drm.c   | 33 ++++++---
+ src/gallium/auxiliary/vl/vl_winsys_dri.c      |  2 +-
+ src/gallium/auxiliary/vl/vl_winsys_dri3.c     |  2 +-
+ src/gallium/auxiliary/vl/vl_winsys_drm.c      |  2 +-
+ .../drivers/llvmpipe/lp_texture_handle.c      |  3 -
+ .../drivers/zink/nir_to_spirv/nir_to_spirv.c  | 57 +++++++++++++---
+ .../drivers/zink/nir_to_spirv/spirv_builder.c | 67 ++++++++++---------
+ src/gallium/drivers/zink/zink_compiler.c      | 50 +++-----------
+ src/gallium/drivers/zink/zink_compiler.h      |  1 +
+ src/gallium/drivers/zink/zink_context.c       | 63 ++++++++++++++++-
+ src/gallium/drivers/zink/zink_descriptors.c   |  6 +-
+ src/gallium/drivers/zink/zink_draw.cpp        |  2 +-
+ src/gallium/drivers/zink/zink_pipeline.c      | 43 +++++++++---
+ src/gallium/drivers/zink/zink_program.c       | 31 ++++++++-
+ src/gallium/drivers/zink/zink_program.h       |  2 +-
+ src/gallium/drivers/zink/zink_screen.c        |  4 +-
+ src/gallium/drivers/zink/zink_types.h         |  3 +
+ .../frontends/clover/core/platform.cpp        |  4 +-
+ src/gallium/frontends/dri/dri2.c              |  2 +-
+ src/gallium/frontends/dri/kopper.c            |  2 +-
+ src/gallium/frontends/rusticl/core/device.rs  |  2 +-
+ .../frontends/rusticl/mesa/pipe/device.rs     |  8 ++-
+ .../frontends/rusticl/mesa/pipe/screen.rs     |  4 ++
+ src/gallium/frontends/xa/xa_tracker.c         |  2 +-
+ src/gallium/targets/d3dadapter9/drm.c         |  2 +-
+ src/gallium/targets/rusticl/meson.build       |  1 +
+ src/gallium/tests/trivial/quad-tex.c          |  2 +-
+ src/gallium/tests/trivial/tri.c               |  2 +-
+ src/util/format/u_format.c                    | 33 +++++++++
+ src/util/format/u_format.h                    |  5 ++
+ 33 files changed, 340 insertions(+), 142 deletions(-)
+
+diff --git a/docs/features.txt b/docs/features.txt
+index 46451b192a5..446ac36aadb 100644
+--- a/docs/features.txt
++++ b/docs/features.txt
+@@ -850,7 +850,7 @@ Rusticl OpenCL 1.2 -- all DONE:
+   clEnqueueMarkerWithWaitList                           DONE
+   clEnqueueBarrierWithWaitList                          DONE
+   clUnloadPlatformCompiler                              DONE
+-  cl_khr_fp64                                           in progress (iris, llvmpipe, nvc0, radeonsi, Available with environment variable RUSTICL_FEATURES=fp64, device dependent.)
++  cl_khr_fp64                                           in progress (iris, llvmpipe, nvc0, radeonsi, zink, Available with environment variable RUSTICL_FEATURES=fp64, device dependent.)
+   printf                                                DONE
+   CL_KERNEL_ATTRIBUTES for clGetKernelInfo              DONE
+   OpenCL C 1.2                                          DONE
+@@ -870,7 +870,7 @@ Rusticl OpenCL 2.0 -- all DONE:
+   - from sRGB images                                    in progress
+   clCreateSamplerWithProperties                         DONE
+   Non-uniform work-group sizes                          not started
+-  cl_khr_3d_image_writes                                DONE (iris, llvmpipe, nvc0, panfrost, radeonsi)
++  cl_khr_3d_image_writes                                DONE (iris, llvmpipe, nvc0, panfrost, radeonsi, zink)
+   OpenCL C 2.0                                          in progress
+   - Work-group Collective Functions                     not started
+   - Generic address space                               in progress
+@@ -881,7 +881,7 @@ Rusticl OpenCL 2.1 -- all DONE:
+   Sub groups                                            DONE (iris, llvmpipe, radeonsi)
+   - cl_khr_subgroups                                    in progress
+   cl_khr_il_program                                     DONE
+-  Device and host timer synchronization                 DONE (iris, llvmpipe, radeonsi)
++  Device and host timer synchronization                 DONE (iris, llvmpipe, radeonsi, zink)
+   clEnqueueSVMMigrateMem                                in progress (nvc0/gp100, broken)
+   clCloneKernel                                         DONE
+   Default device command queue                          not started
+@@ -915,13 +915,13 @@ Rusticl extensions that are not part of any OpenCL version:
+   cl_khr_async_copy_fence                               not started
+   cl_khr_async_work_group_copy_fence                    not started
+   cl_khr_device_enqueue_local_arg_types                 not started
+-  cl_khr_device_uuid                                    DONE (iris, llvmpipe, radeonsi)
++  cl_khr_device_uuid                                    DONE (iris, llvmpipe, radeonsi, zink)
+   cl_khr_egl_event                                      not started
+   cl_khr_egl_image                                      not started
+   cl_khr_expect_assume                                  in progress (hints are ignored)
+   cl_khr_extended_async_copies                          not started
+   cl_khr_extended_bit_ops                               in progress
+-  cl_khr_fp16                                           in progress (llvmpipe, radeonsi, Available with environment variable RUSTICL_FEATURES=fp16)
++  cl_khr_fp16                                           in progress (llvmpipe, radeonsi, zink, Available with environment variable RUSTICL_FEATURES=fp16)
+   cl_khr_gl_depth_images                                not started
+   cl_khr_gl_msaa_sharing                                not started
+   cl_khr_gl_sharing                                     in progress
+@@ -931,7 +931,7 @@ Rusticl extensions that are not part of any OpenCL version:
+   cl_khr_int64_extended_atomics                         not started
+   cl_khr_integer_dot_product                            DONE
+   cl_khr_mipmap_image                                   not started
+-  cl_khr_pci_bus_info                                   DONE (iris, nvc0, radeonsi)
++  cl_khr_pci_bus_info                                   DONE (iris, nvc0, radeonsi, zink)
+   cl_khr_priority_hints                                 not started
+   cl_khr_spirv_extended_debug_info                      not started
+   cl_khr_spirv_linkonce_odr                             not started
+diff --git a/src/gallium/auxiliary/pipe-loader/pipe_loader.c b/src/gallium/auxiliary/pipe-loader/pipe_loader.c
+index 5b69599ee4f..ad9d5d3ce73 100644
+--- a/src/gallium/auxiliary/pipe-loader/pipe_loader.c
++++ b/src/gallium/auxiliary/pipe-loader/pipe_loader.c
+@@ -56,13 +56,18 @@ const driOptionDescription gallium_driconf[] = {
+ };
+ 
+ int
+-pipe_loader_probe(struct pipe_loader_device **devs, int ndev)
++pipe_loader_probe(struct pipe_loader_device **devs, int ndev, bool with_zink)
+ {
+    int i, n = 0;
+ 
+    for (i = 0; i < ARRAY_SIZE(backends); i++)
+       n += backends[i](&devs[n], MAX2(0, ndev - n));
+ 
++#ifdef HAVE_ZINK
++   if (with_zink)
++      n += pipe_loader_drm_zink_probe(&devs[n], MAX2(0, ndev - n));
++#endif
++
+    return n;
+ }
+ 
+diff --git a/src/gallium/auxiliary/pipe-loader/pipe_loader.h b/src/gallium/auxiliary/pipe-loader/pipe_loader.h
+index eb3c691c702..b13fa9b5bb1 100644
+--- a/src/gallium/auxiliary/pipe-loader/pipe_loader.h
++++ b/src/gallium/auxiliary/pipe-loader/pipe_loader.h
+@@ -74,13 +74,14 @@ struct pipe_loader_device {
+ /**
+  * Get a list of known devices.
+  *
+- * \param devs Array that will be filled with pointers to the devices
+- *             available in the system.
+- * \param ndev Maximum number of devices to return.
++ * \param devs      Array that will be filled with pointers to the devices
++ *                  available in the system.
++ * \param ndev      Maximum number of devices to return.
++ * \param with_zink If devices should also be loaded with zink.
+  * \return Number of devices available in the system.
+  */
+ int
+-pipe_loader_probe(struct pipe_loader_device **devs, int ndev);
++pipe_loader_probe(struct pipe_loader_device **devs, int ndev, bool with_zink);
+ 
+ /**
+  * Create a pipe_screen for the specified device.
+@@ -213,6 +214,18 @@ pipe_loader_sw_probe_wrapped(struct pipe_loader_device **dev,
+ int
+ pipe_loader_drm_probe(struct pipe_loader_device **devs, int ndev);
+ 
++#ifdef HAVE_ZINK
++/**
++ * Get a list of known DRM devices compatible with zink.
++ *
++ * This function is platform-specific.
++ *
++ * \sa pipe_loader_probe
++ */
++int
++pipe_loader_drm_zink_probe(struct pipe_loader_device **devs, int ndev);
++#endif
++
+ /**
+  * Initialize a DRM device in an already opened fd.
+  *
+@@ -221,7 +234,7 @@ pipe_loader_drm_probe(struct pipe_loader_device **devs, int ndev);
+  * \sa pipe_loader_probe
+  */
+ bool
+-pipe_loader_drm_probe_fd(struct pipe_loader_device **dev, int fd);
++pipe_loader_drm_probe_fd(struct pipe_loader_device **dev, int fd, bool zink);
+ 
+ /**
+  * Get the dri options used for the DRM driver of the given name, if any.
+diff --git a/src/gallium/auxiliary/pipe-loader/pipe_loader_drm.c b/src/gallium/auxiliary/pipe-loader/pipe_loader_drm.c
+index b27858ab467..44934c1255d 100644
+--- a/src/gallium/auxiliary/pipe-loader/pipe_loader_drm.c
++++ b/src/gallium/auxiliary/pipe-loader/pipe_loader_drm.c
+@@ -121,7 +121,7 @@ get_driver_descriptor(const char *driver_name, struct util_dl_library **plib)
+ }
+ 
+ static bool
+-pipe_loader_drm_probe_fd_nodup(struct pipe_loader_device **dev, int fd)
++pipe_loader_drm_probe_fd_nodup(struct pipe_loader_device **dev, int fd, bool zink)
+ {
+    struct pipe_loader_drm_device *ddev = CALLOC_STRUCT(pipe_loader_drm_device);
+    int vendor_id, chip_id;
+@@ -139,7 +139,10 @@ pipe_loader_drm_probe_fd_nodup(struct pipe_loader_device **dev, int fd)
+    ddev->base.ops = &pipe_loader_drm_ops;
+    ddev->fd = fd;
+ 
+-   ddev->base.driver_name = loader_get_driver_for_fd(fd);
++   if (zink)
++      ddev->base.driver_name = strdup("zink");
++   else
++      ddev->base.driver_name = loader_get_driver_for_fd(fd);
+    if (!ddev->base.driver_name)
+       goto fail;
+ 
+@@ -163,7 +166,7 @@ pipe_loader_drm_probe_fd_nodup(struct pipe_loader_device **dev, int fd)
+       goto fail;
+ 
+    /* kmsro supports lots of drivers, try as a fallback */
+-   if (!ddev->dd)
++   if (!ddev->dd && !zink)
+       ddev->dd = get_driver_descriptor("kmsro", plib);
+ 
+    if (!ddev->dd)
+@@ -183,7 +186,7 @@ pipe_loader_drm_probe_fd_nodup(struct pipe_loader_device **dev, int fd)
+ }
+ 
+ bool
+-pipe_loader_drm_probe_fd(struct pipe_loader_device **dev, int fd)
++pipe_loader_drm_probe_fd(struct pipe_loader_device **dev, int fd, bool zink)
+ {
+    bool ret;
+    int new_fd;
+@@ -191,7 +194,7 @@ pipe_loader_drm_probe_fd(struct pipe_loader_device **dev, int fd)
+    if (fd < 0 || (new_fd = os_dupfd_cloexec(fd)) < 0)
+      return false;
+ 
+-   ret = pipe_loader_drm_probe_fd_nodup(dev, new_fd);
++   ret = pipe_loader_drm_probe_fd_nodup(dev, new_fd, zink);
+    if (!ret)
+       close(new_fd);
+ 
+@@ -207,8 +210,8 @@ open_drm_render_node_minor(int minor)
+    return loader_open_device(path);
+ }
+ 
+-int
+-pipe_loader_drm_probe(struct pipe_loader_device **devs, int ndev)
++static int
++pipe_loader_drm_probe_internal(struct pipe_loader_device **devs, int ndev, bool zink)
+ {
+    int i, j, fd;
+ 
+@@ -220,7 +223,7 @@ pipe_loader_drm_probe(struct pipe_loader_device **devs, int ndev)
+       if (fd < 0)
+          continue;
+ 
+-      if (!pipe_loader_drm_probe_fd_nodup(&dev, fd)) {
++      if (!pipe_loader_drm_probe_fd_nodup(&dev, fd, zink)) {
+          close(fd);
+          continue;
+       }
+@@ -237,6 +240,20 @@ pipe_loader_drm_probe(struct pipe_loader_device **devs, int ndev)
+    return j;
+ }
+ 
++int
++pipe_loader_drm_probe(struct pipe_loader_device **devs, int ndev)
++{
++   return pipe_loader_drm_probe_internal(devs, ndev, false);
++}
++
++#ifdef HAVE_ZINK
++int
++pipe_loader_drm_zink_probe(struct pipe_loader_device **devs, int ndev)
++{
++   return pipe_loader_drm_probe_internal(devs, ndev, true);
++}
++#endif
++
+ static void
+ pipe_loader_drm_release(struct pipe_loader_device **dev)
+ {
+diff --git a/src/gallium/auxiliary/vl/vl_winsys_dri.c b/src/gallium/auxiliary/vl/vl_winsys_dri.c
+index 091395d27f3..0abc90a13a7 100644
+--- a/src/gallium/auxiliary/vl/vl_winsys_dri.c
++++ b/src/gallium/auxiliary/vl/vl_winsys_dri.c
+@@ -458,7 +458,7 @@ vl_dri2_screen_create(Display *display, int screen)
+    if (authenticate == NULL || !authenticate->authenticated)
+       goto free_authenticate;
+ 
+-   if (pipe_loader_drm_probe_fd(&scrn->base.dev, fd))
++   if (pipe_loader_drm_probe_fd(&scrn->base.dev, fd, false))
+       scrn->base.pscreen = pipe_loader_create_screen(scrn->base.dev);
+ 
+    if (!scrn->base.pscreen)
+diff --git a/src/gallium/auxiliary/vl/vl_winsys_dri3.c b/src/gallium/auxiliary/vl/vl_winsys_dri3.c
+index 073630e5579..af851fa5ee0 100644
+--- a/src/gallium/auxiliary/vl/vl_winsys_dri3.c
++++ b/src/gallium/auxiliary/vl/vl_winsys_dri3.c
+@@ -842,7 +842,7 @@ vl_dri3_screen_create(Display *display, int screen)
+    scrn->base.color_depth = geom_reply->depth;
+    free(geom_reply);
+ 
+-   if (pipe_loader_drm_probe_fd(&scrn->base.dev, fd))
++   if (pipe_loader_drm_probe_fd(&scrn->base.dev, fd, false))
+       scrn->base.pscreen = pipe_loader_create_screen(scrn->base.dev);
+ 
+    if (!scrn->base.pscreen)
+diff --git a/src/gallium/auxiliary/vl/vl_winsys_drm.c b/src/gallium/auxiliary/vl/vl_winsys_drm.c
+index bae0405e1f6..a35c8072908 100644
+--- a/src/gallium/auxiliary/vl/vl_winsys_drm.c
++++ b/src/gallium/auxiliary/vl/vl_winsys_drm.c
+@@ -46,7 +46,7 @@ vl_drm_screen_create(int fd)
+    if (!vscreen)
+       return NULL;
+ 
+-   if (pipe_loader_drm_probe_fd(&vscreen->dev, fd))
++   if (pipe_loader_drm_probe_fd(&vscreen->dev, fd, false))
+       vscreen->pscreen = pipe_loader_create_screen(vscreen->dev);
+ 
+    if (!vscreen->pscreen)
+diff --git a/src/gallium/drivers/llvmpipe/lp_texture_handle.c b/src/gallium/drivers/llvmpipe/lp_texture_handle.c
+index 18014f5fca1..91725877751 100644
+--- a/src/gallium/drivers/llvmpipe/lp_texture_handle.c
++++ b/src/gallium/drivers/llvmpipe/lp_texture_handle.c
+@@ -364,9 +364,6 @@ compile_sample_function(struct llvmpipe_context *ctx, struct lp_static_texture_s
+ 
+       if (op_type != LP_SAMPLER_OP_FETCH) {
+          if (!sampler->normalized_coords) {
+-            if (texture->target != PIPE_TEXTURE_1D && texture->target != PIPE_TEXTURE_2D)
+-               return NULL;
+-
+             if (!texture->level_zero_only)
+                return NULL;
+          }
+diff --git a/src/gallium/drivers/zink/nir_to_spirv/nir_to_spirv.c b/src/gallium/drivers/zink/nir_to_spirv/nir_to_spirv.c
+index 37059f45807..6f2f5c98be2 100644
+--- a/src/gallium/drivers/zink/nir_to_spirv/nir_to_spirv.c
++++ b/src/gallium/drivers/zink/nir_to_spirv/nir_to_spirv.c
+@@ -101,6 +101,8 @@ struct ntv_context {
+          local_group_size_var,
+          base_vertex_var, base_instance_var, draw_id_var;
+ 
++   SpvId shared_mem_size;
++
+    SpvId subgroup_eq_mask_var,
+          subgroup_ge_mask_var,
+          subgroup_gt_mask_var,
+@@ -663,13 +665,25 @@ get_scratch_block(struct ntv_context *ctx, unsigned bit_size)
+ }
+ 
+ static void
+-create_shared_block(struct ntv_context *ctx, unsigned shared_size, unsigned bit_size)
++create_shared_block(struct ntv_context *ctx, unsigned bit_size)
+ {
+    unsigned idx = bit_size >> 4;
+    SpvId type = spirv_builder_type_uint(&ctx->builder, bit_size);
+-   unsigned block_size = shared_size / (bit_size / 8);
+-   assert(block_size);
+-   SpvId array = spirv_builder_type_array(&ctx->builder, type, emit_uint_const(ctx, 32, block_size));
++   SpvId array;
++
++   assert(gl_shader_stage_is_compute(ctx->nir->info.stage));
++   if (ctx->nir->info.cs.has_variable_shared_mem) {
++      assert(ctx->shared_mem_size);
++      SpvId const_shared_size = emit_uint_const(ctx, 32, ctx->nir->info.shared_size);
++      SpvId shared_mem_size = spirv_builder_emit_triop(&ctx->builder, SpvOpSpecConstantOp, spirv_builder_type_uint(&ctx->builder, 32), SpvOpIAdd, const_shared_size, ctx->shared_mem_size);
++      shared_mem_size = spirv_builder_emit_triop(&ctx->builder, SpvOpSpecConstantOp, spirv_builder_type_uint(&ctx->builder, 32), SpvOpUDiv, shared_mem_size, emit_uint_const(ctx, 32, bit_size / 8));
++      array = spirv_builder_type_array(&ctx->builder, type, shared_mem_size);
++   } else {
++      unsigned block_size = ctx->nir->info.shared_size / (bit_size / 8);
++      assert(block_size);
++      array = spirv_builder_type_array(&ctx->builder, type, emit_uint_const(ctx, 32, block_size));
++   }
++
+    spirv_builder_emit_array_stride(&ctx->builder, array, bit_size / 8);
+    SpvId ptr_type = spirv_builder_type_pointer(&ctx->builder,
+                                                SpvStorageClassWorkgroup,
+@@ -686,7 +700,7 @@ get_shared_block(struct ntv_context *ctx, unsigned bit_size)
+ {
+    unsigned idx = bit_size >> 4;
+    if (!ctx->shared_block_var[idx])
+-      create_shared_block(ctx, ctx->nir->info.shared_size, bit_size);
++      create_shared_block(ctx, bit_size);
+    if (ctx->sinfo->have_workgroup_memory_explicit_layout) {
+       spirv_builder_emit_extension(&ctx->builder, "SPV_KHR_workgroup_memory_explicit_layout");
+       spirv_builder_emit_cap(&ctx->builder, SpvCapabilityWorkgroupMemoryExplicitLayoutKHR);
+@@ -1820,6 +1834,7 @@ emit_alu(struct ntv_context *ctx, nir_alu_instr *alu)
+    UNOP(nir_op_f2f64, SpvOpFConvert)
+    UNOP(nir_op_bitfield_reverse, SpvOpBitReverse)
+    UNOP(nir_op_bit_count, SpvOpBitCount)
++   UNOP(nir_op_fisnormal, SpvOpIsNormal)
+ #undef UNOP
+ 
+    case nir_op_f2f16_rtz:
+@@ -2086,6 +2101,17 @@ emit_alu(struct ntv_context *ctx, nir_alu_instr *alu)
+       result = spirv_builder_emit_quadop(&ctx->builder, SpvOpBitFieldInsert, dest_type, src[0], src[1], src[2], src[3]);
+       break;
+ 
++   /* those are all simple bitcasts, we could do better, but it doesn't matter */
++   case nir_op_pack_32_4x8:
++   case nir_op_pack_32_2x16:
++   case nir_op_pack_64_4x16:
++   case nir_op_unpack_32_4x8:
++   case nir_op_unpack_32_2x16:
++   case nir_op_unpack_64_4x16: {
++      result = emit_bitcast(ctx, dest_type, src[0]);
++      break;
++   }
++
+    case nir_op_pack_32_2x16_split:
+    case nir_op_pack_64_2x32_split: {
+       nir_alu_type type = nir_alu_type_get_base_type(nir_op_infos[alu->op].input_types[0]);
+@@ -3660,8 +3686,12 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
+    SpvId load;
+    if (ctx->stage == MESA_SHADER_KERNEL) {
+       SpvId image_load = spirv_builder_emit_load(&ctx->builder, image_type, sampler_id);
+-      SpvId sampler_load = spirv_builder_emit_load(&ctx->builder, spirv_builder_type_sampler(&ctx->builder), ctx->cl_samplers[tex->sampler_index]);
+-      load = spirv_builder_emit_sampled_image(&ctx->builder, sampled_type, image_load, sampler_load);
++      if (nir_tex_instr_need_sampler(tex)) {
++         SpvId sampler_load = spirv_builder_emit_load(&ctx->builder, spirv_builder_type_sampler(&ctx->builder), ctx->cl_samplers[tex->sampler_index]);
++         load = spirv_builder_emit_sampled_image(&ctx->builder, sampled_type, image_load, sampler_load);
++      } else {
++         load = image_load;
++      }
+    } else {
+       load = spirv_builder_emit_load(&ctx->builder, sampled_type, sampler_id);
+    }
+@@ -3679,7 +3709,7 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
+             tex->op == nir_texop_tex && ctx->explicit_lod && !lod)
+       lod = emit_float_const(ctx, 32, 0.0);
+    if (tex->op == nir_texop_txs) {
+-      SpvId image = is_buffer ?
++      SpvId image = is_buffer || ctx->stage == MESA_SHADER_KERNEL ?
+                     load :
+                     spirv_builder_emit_image(&ctx->builder, image_type, load);
+       /* Its Dim operand must be one of 1D, 2D, 3D, or Cube
+@@ -3700,7 +3730,7 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
+       return;
+    }
+    if (tex->op == nir_texop_query_levels) {
+-      SpvId image = is_buffer ?
++      SpvId image = is_buffer || ctx->stage == MESA_SHADER_KERNEL ?
+                     load :
+                     spirv_builder_emit_image(&ctx->builder, image_type, load);
+       SpvId result = spirv_builder_emit_image_query_levels(&ctx->builder,
+@@ -3709,7 +3739,7 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
+       return;
+    }
+    if (tex->op == nir_texop_texture_samples) {
+-      SpvId image = is_buffer ?
++      SpvId image = is_buffer || ctx->stage == MESA_SHADER_KERNEL ?
+                     load :
+                     spirv_builder_emit_image(&ctx->builder, image_type, load);
+       SpvId result = spirv_builder_emit_unop(&ctx->builder, SpvOpImageQuerySamples,
+@@ -3774,7 +3804,7 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
+    if (tex->op == nir_texop_txf ||
+        tex->op == nir_texop_txf_ms ||
+        tex->op == nir_texop_tg4) {
+-      SpvId image = is_buffer ?
++      SpvId image = is_buffer || ctx->stage == MESA_SHADER_KERNEL ?
+                     load :
+                     spirv_builder_emit_image(&ctx->builder, image_type, load);
+ 
+@@ -4591,6 +4621,11 @@ nir_to_spirv(struct nir_shader *s, const struct zink_shader_info *sinfo, uint32_
+             spirv_builder_emit_builtin(&ctx.builder, ctx.local_group_size_var, SpvBuiltInWorkgroupSize);
+          }
+       }
++      if (s->info.cs.has_variable_shared_mem) {
++         ctx.shared_mem_size = spirv_builder_spec_const_uint(&ctx.builder, 32);
++         spirv_builder_emit_specid(&ctx.builder, ctx.shared_mem_size, ZINK_VARIABLE_SHARED_MEM);
++         spirv_builder_emit_name(&ctx.builder, ctx.shared_mem_size, "variable_shared_mem");
++      }
+       if (s->info.cs.derivative_group) {
+          SpvCapability caps[] = { 0, SpvCapabilityComputeDerivativeGroupQuadsNV, SpvCapabilityComputeDerivativeGroupLinearNV };
+          SpvExecutionMode modes[] = { 0, SpvExecutionModeDerivativeGroupQuadsNV, SpvExecutionModeDerivativeGroupLinearNV };
+diff --git a/src/gallium/drivers/zink/nir_to_spirv/spirv_builder.c b/src/gallium/drivers/zink/nir_to_spirv/spirv_builder.c
+index 768b31f9389..68a55ee730c 100644
+--- a/src/gallium/drivers/zink/nir_to_spirv/spirv_builder.c
++++ b/src/gallium/drivers/zink/nir_to_spirv/spirv_builder.c
+@@ -553,12 +553,13 @@ SpvId
+ spirv_builder_emit_unop(struct spirv_builder *b, SpvOp op, SpvId result_type,
+                         SpvId operand)
+ {
++   struct spirv_buffer *buf = op == SpvOpSpecConstant ? &b->types_const_defs : &b->instructions;
+    SpvId result = spirv_builder_new_id(b);
+-   spirv_buffer_prepare(&b->instructions, b->mem_ctx, 4);
+-   spirv_buffer_emit_word(&b->instructions, op | (4 << 16));
+-   spirv_buffer_emit_word(&b->instructions, result_type);
+-   spirv_buffer_emit_word(&b->instructions, result);
+-   spirv_buffer_emit_word(&b->instructions, operand);
++   spirv_buffer_prepare(buf, b->mem_ctx, 4);
++   spirv_buffer_emit_word(buf, op | (4 << 16));
++   spirv_buffer_emit_word(buf, result_type);
++   spirv_buffer_emit_word(buf, result);
++   spirv_buffer_emit_word(buf, operand);
+    return result;
+ }
+ 
+@@ -580,14 +581,16 @@ SpvId
+ spirv_builder_emit_triop(struct spirv_builder *b, SpvOp op, SpvId result_type,
+                          SpvId operand0, SpvId operand1, SpvId operand2)
+ {
++   struct spirv_buffer *buf = op == SpvOpSpecConstantOp ? &b->types_const_defs : &b->instructions;
++
+    SpvId result = spirv_builder_new_id(b);
+-   spirv_buffer_prepare(&b->instructions, b->mem_ctx, 6);
+-   spirv_buffer_emit_word(&b->instructions, op | (6 << 16));
+-   spirv_buffer_emit_word(&b->instructions, result_type);
+-   spirv_buffer_emit_word(&b->instructions, result);
+-   spirv_buffer_emit_word(&b->instructions, operand0);
+-   spirv_buffer_emit_word(&b->instructions, operand1);
+-   spirv_buffer_emit_word(&b->instructions, operand2);
++   spirv_buffer_prepare(buf, b->mem_ctx, 6);
++   spirv_buffer_emit_word(buf, op | (6 << 16));
++   spirv_buffer_emit_word(buf, result_type);
++   spirv_buffer_emit_word(buf, result);
++   spirv_buffer_emit_word(buf, operand0);
++   spirv_buffer_emit_word(buf, operand1);
++   spirv_buffer_emit_word(buf, operand2);
+    return result;
+ }
+ 
+@@ -595,15 +598,17 @@ SpvId
+ spirv_builder_emit_quadop(struct spirv_builder *b, SpvOp op, SpvId result_type,
+                          SpvId operand0, SpvId operand1, SpvId operand2, SpvId operand3)
+ {
++   struct spirv_buffer *buf = op == SpvOpSpecConstantOp ? &b->types_const_defs : &b->instructions;
++
+    SpvId result = spirv_builder_new_id(b);
+-   spirv_buffer_prepare(&b->instructions, b->mem_ctx, 7);
+-   spirv_buffer_emit_word(&b->instructions, op | (7 << 16));
+-   spirv_buffer_emit_word(&b->instructions, result_type);
+-   spirv_buffer_emit_word(&b->instructions, result);
+-   spirv_buffer_emit_word(&b->instructions, operand0);
+-   spirv_buffer_emit_word(&b->instructions, operand1);
+-   spirv_buffer_emit_word(&b->instructions, operand2);
+-   spirv_buffer_emit_word(&b->instructions, operand3);
++   spirv_buffer_prepare(buf, b->mem_ctx, 7);
++   spirv_buffer_emit_word(buf, op | (7 << 16));
++   spirv_buffer_emit_word(buf, result_type);
++   spirv_buffer_emit_word(buf, result);
++   spirv_buffer_emit_word(buf, operand0);
++   spirv_buffer_emit_word(buf, operand1);
++   spirv_buffer_emit_word(buf, operand2);
++   spirv_buffer_emit_word(buf, operand3);
+    return result;
+ }
+ 
+@@ -612,17 +617,19 @@ spirv_builder_emit_hexop(struct spirv_builder *b, SpvOp op, SpvId result_type,
+                          SpvId operand0, SpvId operand1, SpvId operand2, SpvId operand3,
+                          SpvId operand4, SpvId operand5)
+ {
++   struct spirv_buffer *buf = op == SpvOpSpecConstantOp ? &b->types_const_defs : &b->instructions;
++
+    SpvId result = spirv_builder_new_id(b);
+-   spirv_buffer_prepare(&b->instructions, b->mem_ctx, 9);
+-   spirv_buffer_emit_word(&b->instructions, op | (9 << 16));
+-   spirv_buffer_emit_word(&b->instructions, result_type);
+-   spirv_buffer_emit_word(&b->instructions, result);
+-   spirv_buffer_emit_word(&b->instructions, operand0);
+-   spirv_buffer_emit_word(&b->instructions, operand1);
+-   spirv_buffer_emit_word(&b->instructions, operand2);
+-   spirv_buffer_emit_word(&b->instructions, operand3);
+-   spirv_buffer_emit_word(&b->instructions, operand4);
+-   spirv_buffer_emit_word(&b->instructions, operand5);
++   spirv_buffer_prepare(buf, b->mem_ctx, 9);
++   spirv_buffer_emit_word(buf, op | (9 << 16));
++   spirv_buffer_emit_word(buf, result_type);
++   spirv_buffer_emit_word(buf, result);
++   spirv_buffer_emit_word(buf, operand0);
++   spirv_buffer_emit_word(buf, operand1);
++   spirv_buffer_emit_word(buf, operand2);
++   spirv_buffer_emit_word(buf, operand3);
++   spirv_buffer_emit_word(buf, operand4);
++   spirv_buffer_emit_word(buf, operand5);
+    return result;
+ }
+ 
+diff --git a/src/gallium/drivers/zink/zink_compiler.c b/src/gallium/drivers/zink/zink_compiler.c
+index 80d0e9acef4..88c1e11e709 100644
+--- a/src/gallium/drivers/zink/zink_compiler.c
++++ b/src/gallium/drivers/zink/zink_compiler.c
+@@ -1210,6 +1210,8 @@ zink_screen_init_compiler(struct zink_screen *screen)
+       .lower_flrp32 = true,
+       .lower_fpow = true,
+       .lower_fsat = true,
++      .lower_hadd = true,
++      .lower_iadd_sat = true,
+       .lower_extract_byte = true,
+       .lower_extract_word = true,
+       .lower_insert_byte = true,
+@@ -2040,6 +2042,7 @@ rewrite_bo_access_instr(nir_builder *b, nir_instr *instr, void *data)
+       }
+       return true;
+    }
++   case nir_intrinsic_load_scratch:
+    case nir_intrinsic_load_shared:
+       b->cursor = nir_before_instr(instr);
+       bool force_2x32 = intr->def.bit_size == 64 && !has_int64;
+@@ -2076,6 +2079,7 @@ rewrite_bo_access_instr(nir_builder *b, nir_instr *instr, void *data)
+       }
+       return true;
+    }
++   case nir_intrinsic_store_scratch:
+    case nir_intrinsic_store_shared: {
+       b->cursor = nir_before_instr(instr);
+       bool force_2x32 = nir_src_bit_size(intr->src[0]) == 64 && !has_int64;
+@@ -4825,50 +4829,12 @@ type_sampler_vars(nir_shader *nir, unsigned *sampler_mask)
+             if (instr->type != nir_instr_type_tex)
+                continue;
+             nir_tex_instr *tex = nir_instr_as_tex(instr);
+-            switch (tex->op) {
+-            case nir_texop_lod:
+-            case nir_texop_txs:
+-            case nir_texop_query_levels:
+-            case nir_texop_texture_samples:
+-            case nir_texop_samples_identical:
+-               continue;
+-            default:
+-               break;
+-            }
+-            *sampler_mask |= BITFIELD_BIT(tex->sampler_index);
+-            nir_variable *var = nir_find_sampler_variable_with_tex_index(nir, tex->texture_index);
+-            assert(var);
+-            if (glsl_get_sampler_result_type(glsl_without_array(var->type)) != GLSL_TYPE_VOID)
+-               continue;
+-            const struct glsl_type *img_type = glsl_sampler_type(glsl_get_sampler_dim(glsl_without_array(var->type)), tex->is_shadow, tex->is_array, nir_get_glsl_base_type_for_nir_type(tex->dest_type));
+-            unsigned size = glsl_type_is_array(var->type) ? glsl_array_size(var->type) : 1;
+-            if (size > 1)
+-               img_type = glsl_array_type(img_type, size, 0);
+-            var->type = img_type;
+-            progress = true;
+-         }
+-      }
+-   }
+-   nir_foreach_function_impl(impl, nir) {
+-      nir_foreach_block(block, impl) {
+-         nir_foreach_instr(instr, block) {
+-            if (instr->type != nir_instr_type_tex)
+-               continue;
+-            nir_tex_instr *tex = nir_instr_as_tex(instr);
+-            switch (tex->op) {
+-            case nir_texop_lod:
+-            case nir_texop_txs:
+-            case nir_texop_query_levels:
+-            case nir_texop_texture_samples:
+-            case nir_texop_samples_identical:
+-               break;
+-            default:
+-               continue;
+-            }
+-            *sampler_mask |= BITFIELD_BIT(tex->sampler_index);
++            if (nir_tex_instr_need_sampler(tex))
++               *sampler_mask |= BITFIELD_BIT(tex->sampler_index);
+             nir_variable *var = nir_find_sampler_variable_with_tex_index(nir, tex->texture_index);
+             assert(var);
+-            if (glsl_get_sampler_result_type(glsl_without_array(var->type)) != GLSL_TYPE_VOID)
++            if (glsl_get_sampler_result_type(glsl_without_array(var->type)) != GLSL_TYPE_VOID &&
++                nir_tex_instr_is_query(tex))
+                continue;
+             const struct glsl_type *img_type = glsl_sampler_type(glsl_get_sampler_dim(glsl_without_array(var->type)), tex->is_shadow, tex->is_array, nir_get_glsl_base_type_for_nir_type(tex->dest_type));
+             unsigned size = glsl_type_is_array(var->type) ? glsl_array_size(var->type) : 1;
+diff --git a/src/gallium/drivers/zink/zink_compiler.h b/src/gallium/drivers/zink/zink_compiler.h
+index 834084dbc51..1319193f83c 100644
+--- a/src/gallium/drivers/zink/zink_compiler.h
++++ b/src/gallium/drivers/zink/zink_compiler.h
+@@ -29,6 +29,7 @@
+ #define ZINK_WORKGROUP_SIZE_X 1
+ #define ZINK_WORKGROUP_SIZE_Y 2
+ #define ZINK_WORKGROUP_SIZE_Z 3
++#define ZINK_VARIABLE_SHARED_MEM 4
+ #define ZINK_INLINE_VAL_FLAT_MASK 0
+ #define ZINK_INLINE_VAL_PV_LAST_VERT 1
+ 
+diff --git a/src/gallium/drivers/zink/zink_context.c b/src/gallium/drivers/zink/zink_context.c
+index 99a5c3bf7a3..7655a5bb317 100644
+--- a/src/gallium/drivers/zink/zink_context.c
++++ b/src/gallium/drivers/zink/zink_context.c
+@@ -55,6 +55,8 @@
+ #include "nir.h"
+ #include "nir_builder.h"
+ 
++#include "vk_format.h"
++
+ #include "driver_trace/tr_context.h"
+ 
+ #include "util/u_memory.h"
+@@ -392,6 +394,7 @@ zink_create_sampler_state(struct pipe_context *pctx,
+                           const struct pipe_sampler_state *state)
+ {
+    struct zink_screen *screen = zink_screen(pctx->screen);
++   struct zink_context *zink = zink_context(pctx);
+    bool need_custom = false;
+    bool need_clamped_border_color = false;
+    VkSamplerCreateInfo sci = {0};
+@@ -400,7 +403,11 @@ zink_create_sampler_state(struct pipe_context *pctx,
+    sci.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+    if (screen->info.have_EXT_non_seamless_cube_map && !state->seamless_cube_map)
+       sci.flags |= VK_SAMPLER_CREATE_NON_SEAMLESS_CUBE_MAP_BIT_EXT;
+-   assert(!state->unnormalized_coords);
++   /* TODO: check for `PIPE_CONTEXT_COMPUTE_ONLY` once !25390 lands and rusticl uses it. */
++   if (state->unnormalized_coords) {
++      assert(zink->flags & PIPE_CONTEXT_COMPUTE_ONLY);
++      sci.unnormalizedCoordinates = state->unnormalized_coords;
++   }
+    sci.magFilter = zink_filter(state->mag_img_filter);
+    if (sci.unnormalizedCoordinates)
+       sci.minFilter = sci.magFilter;
+@@ -1157,6 +1164,10 @@ zink_create_sampler_view(struct pipe_context *pctx, struct pipe_resource *pres,
+                } else
+                   assert(state->format == linear);
+             }
++         } else if (util_format_is_red_alpha(pres->format)) {
++            /* RA formats are mapped to RG with adjusted swizzle */
++            assert(util_format_is_red_green(vk_format_to_pipe_format(ivci.format)));
++            swizzle[3] = PIPE_SWIZZLE_Y;
+          }
+ 
+          ivci.components.r = zink_component_mapping(swizzle[0]);
+@@ -2471,6 +2482,44 @@ zink_make_image_handle_resident(struct pipe_context *pctx, uint64_t handle, unsi
+    ctx->di.bindless_dirty[1] = true;
+ }
+ 
++static void
++zink_set_global_binding(struct pipe_context *pctx,
++                        unsigned first, unsigned count,
++                        struct pipe_resource **resources,
++                        uint32_t **handles)
++{
++   struct zink_context *ctx = zink_context(pctx);
++
++   size_t size = ctx->di.global_bindings.capacity;
++   if (!util_dynarray_resize(&ctx->di.global_bindings, struct pipe_resource*, first + count + 8))
++      unreachable("zink: out of memory somehow");
++   if (size != ctx->di.global_bindings.capacity) {
++      uint8_t *data = ctx->di.global_bindings.data;
++      memset(data + size, 0, ctx->di.global_bindings.capacity - size);
++   }
++
++   struct pipe_resource **globals = ctx->di.global_bindings.data;
++   for (unsigned i = 0; i < count; i++) {
++      if (resources && resources[i]) {
++         struct zink_resource *res = zink_resource(resources[i]);
++
++         util_range_add(&res->base.b, &res->valid_buffer_range, 0, res->base.b.width0);
++         pipe_resource_reference(&globals[first + i], resources[i]);
++
++         uint64_t addr = 0;
++         memcpy(&addr, handles[i], sizeof(addr));
++         addr += zink_resource_get_address(zink_screen(pctx->screen), res);
++         memcpy(handles[i], &addr, sizeof(addr));
++         zink_resource_usage_set(res, ctx->batch.state, true);
++         res->obj->unordered_read = res->obj->unordered_write = false;
++         zink_screen(ctx->base.screen)->buffer_barrier(ctx, res, VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
++      } else if (globals[i]) {
++         zink_batch_reference_resource(&ctx->batch, zink_resource(globals[first + i]));
++         pipe_resource_reference(&globals[first + i], NULL);
++      }
++   }
++}
++
+ static void
+ zink_set_stencil_ref(struct pipe_context *pctx,
+                      const struct pipe_stencil_ref ref)
+@@ -3203,6 +3252,16 @@ zink_update_descriptor_refs(struct zink_context *ctx, bool compute)
+          }
+       }
+    }
++
++   unsigned global_count = util_dynarray_num_elements(&ctx->di.global_bindings, struct zink_resource*);
++   struct zink_resource **globals = ctx->di.global_bindings.data;
++   for (unsigned i = 0; i < global_count; i++) {
++      struct zink_resource *res = globals[i];
++      if (!res)
++         continue;
++      zink_batch_resource_usage_set(batch, res, true, true);
++      res->obj->unordered_read = res->obj->unordered_write = false;
++   }
+ }
+ 
+ static void
+@@ -5208,6 +5267,8 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
+ 
+    ctx->base.set_stream_output_targets = zink_set_stream_output_targets;
+    ctx->base.flush_resource = zink_flush_resource;
++   if (screen->info.have_KHR_buffer_device_address)
++      ctx->base.set_global_binding = zink_set_global_binding;
+ 
+    ctx->base.emit_string_marker = zink_emit_string_marker;
+ 
+diff --git a/src/gallium/drivers/zink/zink_descriptors.c b/src/gallium/drivers/zink/zink_descriptors.c
+index 04d4d261573..b7e0ded9ffc 100644
+--- a/src/gallium/drivers/zink/zink_descriptors.c
++++ b/src/gallium/drivers/zink/zink_descriptors.c
+@@ -313,7 +313,7 @@ init_db_template_entry(struct zink_screen *screen, struct zink_shader *shader, e
+                        unsigned idx, struct zink_descriptor_template *entry, unsigned *entry_idx)
+ {
+     int index = shader->bindings[type][idx].index;
+-    gl_shader_stage stage = shader->info.stage;
++    gl_shader_stage stage = clamp_stage(&shader->info);
+     entry->count = shader->bindings[type][idx].size;
+ 
+     switch (shader->bindings[type][idx].type) {
+@@ -692,7 +692,7 @@ zink_descriptor_shader_init(struct zink_screen *screen, struct zink_shader *shad
+ {
+    VkDescriptorSetLayoutBinding bindings[ZINK_DESCRIPTOR_BASE_TYPES * ZINK_MAX_DESCRIPTORS_PER_TYPE];
+    unsigned num_bindings = 0;
+-   VkShaderStageFlagBits stage_flags = mesa_to_vk_shader_stage(shader->info.stage);
++   VkShaderStageFlagBits stage_flags = mesa_to_vk_shader_stage(clamp_stage(&shader->info));
+ 
+    unsigned desc_set_size = shader->has_uniforms;
+    for (unsigned i = 0; i < ZINK_DESCRIPTOR_BASE_TYPES; i++)
+@@ -709,7 +709,7 @@ zink_descriptor_shader_init(struct zink_screen *screen, struct zink_shader *shad
+       binding->pImmutableSamplers = NULL;
+       struct zink_descriptor_template *entry = &shader->precompile.db_template[num_bindings];
+       entry->count = 1;
+-      entry->offset = offsetof(struct zink_context, di.db.ubos[shader->info.stage][0]);
++      entry->offset = offsetof(struct zink_context, di.db.ubos[clamp_stage(&shader->info)][0]);
+       entry->stride = sizeof(VkDescriptorAddressInfoEXT);
+       entry->db_size = screen->info.db_props.robustUniformBufferDescriptorSize;
+       num_bindings++;
+diff --git a/src/gallium/drivers/zink/zink_draw.cpp b/src/gallium/drivers/zink/zink_draw.cpp
+index 2946e26c802..11e7295fe82 100644
+--- a/src/gallium/drivers/zink/zink_draw.cpp
++++ b/src/gallium/drivers/zink/zink_draw.cpp
+@@ -1261,7 +1261,7 @@ zink_launch_grid(struct pipe_context *pctx, const struct pipe_grid_info *info)
+                                 0, 1, &mb, 0, NULL, 0, NULL);
+    }
+ 
+-   zink_program_update_compute_pipeline_state(ctx, ctx->curr_compute, info->block);
++   zink_program_update_compute_pipeline_state(ctx, ctx->curr_compute, info);
+    VkPipeline prev_pipeline = ctx->compute_pipeline_state.pipeline;
+ 
+    if (BATCH_CHANGED) {
+diff --git a/src/gallium/drivers/zink/zink_pipeline.c b/src/gallium/drivers/zink/zink_pipeline.c
+index 7e962176798..063fdd9d73f 100644
+--- a/src/gallium/drivers/zink/zink_pipeline.c
++++ b/src/gallium/drivers/zink/zink_pipeline.c
+@@ -457,19 +457,42 @@ zink_create_compute_pipeline(struct zink_screen *screen, struct zink_compute_pro
+    stage.pName = "main";
+ 
+    VkSpecializationInfo sinfo = {0};
+-   VkSpecializationMapEntry me[3];
+-   if (comp->use_local_size) {
+-      stage.pSpecializationInfo = &sinfo;
+-      sinfo.mapEntryCount = 3;
+-      sinfo.pMapEntries = &me[0];
+-      sinfo.dataSize = sizeof(state->local_size);
+-      sinfo.pData = &state->local_size[0];
+-      uint32_t ids[] = {ZINK_WORKGROUP_SIZE_X, ZINK_WORKGROUP_SIZE_Y, ZINK_WORKGROUP_SIZE_Z};
+-      for (int i = 0; i < 3; i++) {
++   VkSpecializationMapEntry me[4];
++   uint32_t data[4];
++   if (state)  {
++      int i = 0;
++
++      if (comp->use_local_size) {
++         sinfo.mapEntryCount += 3;
++         sinfo.dataSize += sizeof(state->local_size);
++
++         uint32_t ids[] = {ZINK_WORKGROUP_SIZE_X, ZINK_WORKGROUP_SIZE_Y, ZINK_WORKGROUP_SIZE_Z};
++         for (int l = 0; l < 3; l++, i++) {
++            data[i] = state->local_size[l];
++            me[i].size = sizeof(uint32_t);
++            me[i].constantID = ids[l];
++            me[i].offset = i * sizeof(uint32_t);
++         }
++      }
++
++      if (comp->has_variable_shared_mem) {
++         sinfo.mapEntryCount += 1;
++         sinfo.dataSize += sizeof(uint32_t);
++         data[i] = state->variable_shared_mem;
+          me[i].size = sizeof(uint32_t);
+-         me[i].constantID = ids[i];
++         me[i].constantID = ZINK_VARIABLE_SHARED_MEM;
+          me[i].offset = i * sizeof(uint32_t);
++         i++;
+       }
++
++      if (sinfo.dataSize) {
++         stage.pSpecializationInfo = &sinfo;
++         sinfo.pData = data;
++         sinfo.pMapEntries = me;
++      }
++
++      assert(i <= ARRAY_SIZE(data));
++      STATIC_ASSERT(ARRAY_SIZE(data) == ARRAY_SIZE(me));
+    }
+ 
+    pci.stage = stage;
+diff --git a/src/gallium/drivers/zink/zink_program.c b/src/gallium/drivers/zink/zink_program.c
+index 9a26e4bffee..796cc258a4f 100644
+--- a/src/gallium/drivers/zink/zink_program.c
++++ b/src/gallium/drivers/zink/zink_program.c
+@@ -1295,15 +1295,19 @@ hash_compute_pipeline_state(const void *key)
+ }
+ 
+ void
+-zink_program_update_compute_pipeline_state(struct zink_context *ctx, struct zink_compute_program *comp, const uint block[3])
++zink_program_update_compute_pipeline_state(struct zink_context *ctx, struct zink_compute_program *comp, const struct pipe_grid_info *info)
+ {
+    if (comp->use_local_size) {
+       for (int i = 0; i < ARRAY_SIZE(ctx->compute_pipeline_state.local_size); i++) {
+-         if (ctx->compute_pipeline_state.local_size[i] != block[i])
++         if (ctx->compute_pipeline_state.local_size[i] != info->block[i])
+             ctx->compute_pipeline_state.dirty = true;
+-         ctx->compute_pipeline_state.local_size[i] = block[i];
++         ctx->compute_pipeline_state.local_size[i] = info->block[i];
+       }
+    }
++   if (ctx->compute_pipeline_state.variable_shared_mem != info->variable_shared_mem) {
++      ctx->compute_pipeline_state.dirty = true;
++      ctx->compute_pipeline_state.variable_shared_mem = info->variable_shared_mem;
++   }
+ }
+ 
+ static bool
+@@ -1370,6 +1374,7 @@ create_compute_program(struct zink_context *ctx, nir_shader *nir)
+    comp->use_local_size = !(nir->info.workgroup_size[0] ||
+                             nir->info.workgroup_size[1] ||
+                             nir->info.workgroup_size[2]);
++   comp->has_variable_shared_mem = nir->info.cs.has_variable_shared_mem;
+    comp->base.can_precompile = !comp->use_local_size &&
+                                (screen->info.have_EXT_non_seamless_cube_map || !zink_shader_has_cubes(nir)) &&
+                                (screen->info.rb2_feats.robustImageAccess2 || !(ctx->flags & PIPE_CONTEXT_ROBUST_BUFFER_ACCESS));
+@@ -1954,6 +1959,25 @@ zink_bind_cs_state(struct pipe_context *pctx,
+    zink_select_launch_grid(ctx);
+ }
+ 
++static void
++zink_get_compute_state_info(struct pipe_context *pctx, void *cso, struct pipe_compute_state_object_info *info)
++{
++   struct zink_compute_program *comp = cso;
++   struct zink_screen *screen = zink_screen(pctx->screen);
++
++   info->max_threads = screen->info.props.limits.maxComputeWorkGroupInvocations;
++   info->private_memory = comp->scratch_size;
++   if (screen->info.props11.subgroupSize) {
++      info->preferred_simd_size = screen->info.props11.subgroupSize;
++      info->simd_sizes = info->preferred_simd_size;
++   } else {
++      // just guess it
++      info->preferred_simd_size = 64;
++      // only used for actual subgroup support
++      info->simd_sizes = 0;
++   }
++}
++
+ static void
+ zink_delete_cs_shader_state(struct pipe_context *pctx, void *cso)
+ {
+@@ -2242,6 +2266,7 @@ zink_program_init(struct zink_context *ctx)
+ 
+    ctx->base.create_compute_state = zink_create_cs_state;
+    ctx->base.bind_compute_state = zink_bind_cs_state;
++   ctx->base.get_compute_state_info = zink_get_compute_state_info;
+    ctx->base.delete_compute_state = zink_delete_cs_shader_state;
+ 
+    if (zink_screen(ctx->base.screen)->info.have_EXT_vertex_input_dynamic_state)
+diff --git a/src/gallium/drivers/zink/zink_program.h b/src/gallium/drivers/zink/zink_program.h
+index 8df5e3388ab..432dcb0a9e4 100644
+--- a/src/gallium/drivers/zink/zink_program.h
++++ b/src/gallium/drivers/zink/zink_program.h
+@@ -231,7 +231,7 @@ VkPipelineLayout
+ zink_pipeline_layout_create(struct zink_screen *screen, VkDescriptorSetLayout *dsl, unsigned num_dsl, bool is_compute, VkPipelineLayoutCreateFlags flags);
+ 
+ void
+-zink_program_update_compute_pipeline_state(struct zink_context *ctx, struct zink_compute_program *comp, const uint block[3]);
++zink_program_update_compute_pipeline_state(struct zink_context *ctx, struct zink_compute_program *comp, const struct pipe_grid_info *info);
+ void
+ zink_update_compute_program(struct zink_context *ctx);
+ VkPipeline
+diff --git a/src/gallium/drivers/zink/zink_screen.c b/src/gallium/drivers/zink/zink_screen.c
+index e472755e3b3..672858a34cb 100644
+--- a/src/gallium/drivers/zink/zink_screen.c
++++ b/src/gallium/drivers/zink/zink_screen.c
+@@ -1556,9 +1556,7 @@ zink_get_display_device(const struct zink_screen *screen, uint32_t pdev_count,
+          return i;
+    }
+ 
+-   mesa_loge("ZINK: could not find the Display GPU, choosing default device!");
+-
+-   return 0;
++   return -1;
+ }
+ 
+ static int
+diff --git a/src/gallium/drivers/zink/zink_types.h b/src/gallium/drivers/zink/zink_types.h
+index 86926758a34..455be335c1c 100644
+--- a/src/gallium/drivers/zink/zink_types.h
++++ b/src/gallium/drivers/zink/zink_types.h
+@@ -937,6 +937,7 @@ struct zink_compute_pipeline_state {
+    uint32_t final_hash;
+    bool dirty;
+    uint32_t local_size[3];
++   uint32_t variable_shared_mem;
+ 
+    uint32_t module_hash;
+    VkShaderModule module;
+@@ -1131,6 +1132,7 @@ struct zink_compute_program {
+    struct zink_program base;
+ 
+    bool use_local_size;
++   bool has_variable_shared_mem;
+ 
+    unsigned scratch_size;
+ 
+@@ -1935,6 +1937,7 @@ struct zink_context {
+       uint8_t num_ubos[MESA_SHADER_STAGES];
+ 
+       uint8_t num_ssbos[MESA_SHADER_STAGES];
++      struct util_dynarray global_bindings;
+ 
+       VkDescriptorImageInfo textures[MESA_SHADER_STAGES][PIPE_MAX_SAMPLERS];
+       uint32_t emulate_nonseamless[MESA_SHADER_STAGES];
+diff --git a/src/gallium/frontends/clover/core/platform.cpp b/src/gallium/frontends/clover/core/platform.cpp
+index c37a5341628..581d13a4bf4 100644
+--- a/src/gallium/frontends/clover/core/platform.cpp
++++ b/src/gallium/frontends/clover/core/platform.cpp
+@@ -26,14 +26,14 @@
+ using namespace clover;
+ 
+ platform::platform() : adaptor_range(evals(), devs) {
+-   int n = pipe_loader_probe(NULL, 0);
++   int n = pipe_loader_probe(NULL, 0, false);
+    std::vector<pipe_loader_device *> ldevs(n);
+ 
+    unsigned major = 1, minor = 1;
+    debug_get_version_option("CLOVER_PLATFORM_VERSION_OVERRIDE", &major, &minor);
+    version = CL_MAKE_VERSION(major, minor, 0);
+ 
+-   pipe_loader_probe(&ldevs.front(), n);
++   pipe_loader_probe(&ldevs.front(), n, false);
+ 
+    for (pipe_loader_device *ldev : ldevs) {
+       try {
+diff --git a/src/gallium/frontends/dri/dri2.c b/src/gallium/frontends/dri/dri2.c
+index 1f71081725a..e37ff4d9a3f 100644
+--- a/src/gallium/frontends/dri/dri2.c
++++ b/src/gallium/frontends/dri/dri2.c
+@@ -2381,7 +2381,7 @@ dri2_init_screen(struct dri_screen *screen)
+ 
+    (void) mtx_init(&screen->opencl_func_mutex, mtx_plain);
+ 
+-   if (pipe_loader_drm_probe_fd(&screen->dev, screen->fd))
++   if (pipe_loader_drm_probe_fd(&screen->dev, screen->fd, false))
+       pscreen = pipe_loader_create_screen(screen->dev);
+ 
+    if (!pscreen)
+diff --git a/src/gallium/frontends/dri/kopper.c b/src/gallium/frontends/dri/kopper.c
+index e83102881bf..34b2567a88b 100644
+--- a/src/gallium/frontends/dri/kopper.c
++++ b/src/gallium/frontends/dri/kopper.c
+@@ -126,7 +126,7 @@ kopper_init_screen(struct dri_screen *screen)
+ 
+    bool success;
+    if (screen->fd != -1)
+-      success = pipe_loader_drm_probe_fd(&screen->dev, screen->fd);
++      success = pipe_loader_drm_probe_fd(&screen->dev, screen->fd, false);
+    else
+       success = pipe_loader_vk_probe_dri(&screen->dev, NULL);
+ 
+diff --git a/src/gallium/frontends/rusticl/core/device.rs b/src/gallium/frontends/rusticl/core/device.rs
+index aeaba5326bb..36d3af8418c 100644
+--- a/src/gallium/frontends/rusticl/core/device.rs
++++ b/src/gallium/frontends/rusticl/core/device.rs
+@@ -649,7 +649,7 @@ impl Device {
+             pipe_loader_device_type::NUM_PIPE_LOADER_DEVICE_TYPES => CL_DEVICE_TYPE_CUSTOM,
+         };
+ 
+-        if internal && res == CL_DEVICE_TYPE_GPU {
++        if internal && res == CL_DEVICE_TYPE_GPU && self.screen.driver_name() != "zink" {
+             res |= CL_DEVICE_TYPE_DEFAULT;
+         }
+ 
+diff --git a/src/gallium/frontends/rusticl/mesa/pipe/device.rs b/src/gallium/frontends/rusticl/mesa/pipe/device.rs
+index a54ff2f1d99..83046aed60d 100644
+--- a/src/gallium/frontends/rusticl/mesa/pipe/device.rs
++++ b/src/gallium/frontends/rusticl/mesa/pipe/device.rs
+@@ -24,6 +24,10 @@ impl PipeLoaderDevice {
+         let s = unsafe { pipe_loader_create_screen(self.ldev) };
+         PipeScreen::new(self, s)
+     }
++
++    pub fn driver_name(&self) -> String {
++        c_string_to_string(unsafe { *self.ldev }.driver_name)
++    }
+ }
+ 
+ impl Drop for PipeLoaderDevice {
+@@ -35,10 +39,10 @@ impl Drop for PipeLoaderDevice {
+ }
+ 
+ fn load_devs() -> Vec<PipeLoaderDevice> {
+-    let n = unsafe { pipe_loader_probe(ptr::null_mut(), 0) };
++    let n = unsafe { pipe_loader_probe(ptr::null_mut(), 0, true) };
+     let mut devices: Vec<*mut pipe_loader_device> = vec![ptr::null_mut(); n as usize];
+     unsafe {
+-        pipe_loader_probe(devices.as_mut_ptr(), n);
++        pipe_loader_probe(devices.as_mut_ptr(), n, true);
+     }
+ 
+     devices
+diff --git a/src/gallium/frontends/rusticl/mesa/pipe/screen.rs b/src/gallium/frontends/rusticl/mesa/pipe/screen.rs
+index be6ec21e0f6..9428bc0b98d 100644
+--- a/src/gallium/frontends/rusticl/mesa/pipe/screen.rs
++++ b/src/gallium/frontends/rusticl/mesa/pipe/screen.rs
+@@ -240,6 +240,10 @@ impl PipeScreen {
+         }
+     }
+ 
++    pub fn driver_name(&self) -> String {
++        self.ldev.driver_name()
++    }
++
+     pub fn name(&self) -> String {
+         unsafe {
+             let s = *self.screen;
+diff --git a/src/gallium/frontends/xa/xa_tracker.c b/src/gallium/frontends/xa/xa_tracker.c
+index ad798740531..7686a9b84b8 100644
+--- a/src/gallium/frontends/xa/xa_tracker.c
++++ b/src/gallium/frontends/xa/xa_tracker.c
+@@ -171,7 +171,7 @@ xa_tracker_create(int drm_fd)
+     if (!xa)
+ 	return NULL;
+ 
+-    if (pipe_loader_drm_probe_fd(&xa->dev, drm_fd))
++    if (pipe_loader_drm_probe_fd(&xa->dev, drm_fd, false))
+ 	xa->screen = pipe_loader_create_screen(xa->dev);
+ 
+     if (!xa->screen)
+diff --git a/src/gallium/targets/d3dadapter9/drm.c b/src/gallium/targets/d3dadapter9/drm.c
+index 9d3e6a947c7..09345483425 100644
+--- a/src/gallium/targets/d3dadapter9/drm.c
++++ b/src/gallium/targets/d3dadapter9/drm.c
+@@ -235,7 +235,7 @@ drm_create_adapter( int fd,
+     ctx->fd = fd;
+     ctx->base.linear_framebuffer = different_device;
+ 
+-    if (!pipe_loader_drm_probe_fd(&ctx->dev, fd)) {
++    if (!pipe_loader_drm_probe_fd(&ctx->dev, fd, false)) {
+         ERR("Failed to probe drm fd %d.\n", fd);
+         FREE(ctx);
+         close(fd);
+diff --git a/src/gallium/targets/rusticl/meson.build b/src/gallium/targets/rusticl/meson.build
+index 8205ed77eca..b2963fe6dfa 100644
+--- a/src/gallium/targets/rusticl/meson.build
++++ b/src/gallium/targets/rusticl/meson.build
+@@ -56,6 +56,7 @@ librusticl = shared_library(
+     driver_panfrost,
+     driver_radeonsi,
+     driver_swrast,
++    driver_zink,
+     idep_nir,
+     idep_vtn,
+   ],
+diff --git a/src/gallium/tests/trivial/quad-tex.c b/src/gallium/tests/trivial/quad-tex.c
+index 43c5ac4f8a5..c07fa5ecc8a 100644
+--- a/src/gallium/tests/trivial/quad-tex.c
++++ b/src/gallium/tests/trivial/quad-tex.c
+@@ -93,7 +93,7 @@ static void init_prog(struct program *p)
+ 	ASSERTED int ret;
+ 
+ 	/* find a hardware device */
+-	ret = pipe_loader_probe(&p->dev, 1);
++	ret = pipe_loader_probe(&p->dev, 1, false);
+ 	assert(ret);
+ 
+ 	/* init a pipe screen */
+diff --git a/src/gallium/tests/trivial/tri.c b/src/gallium/tests/trivial/tri.c
+index a56b2bce9cc..94572e80d25 100644
+--- a/src/gallium/tests/trivial/tri.c
++++ b/src/gallium/tests/trivial/tri.c
+@@ -87,7 +87,7 @@ static void init_prog(struct program *p)
+ 	ASSERTED int ret;
+ 
+ 	/* find a hardware device */
+-	ret = pipe_loader_probe(&p->dev, 1);
++	ret = pipe_loader_probe(&p->dev, 1, false);
+ 	assert(ret);
+ 
+ 	/* init a pipe screen */
+diff --git a/src/util/format/u_format.c b/src/util/format/u_format.c
+index 920d217088e..30dd65e8428 100644
+--- a/src/util/format/u_format.c
++++ b/src/util/format/u_format.c
+@@ -299,6 +299,39 @@ util_format_is_luminance_alpha(enum pipe_format format)
+    return false;
+ }
+ 
++bool
++util_format_is_red_alpha(enum pipe_format format)
++{
++   const struct util_format_description *desc =
++      util_format_description(format);
++
++   if ((desc->colorspace == UTIL_FORMAT_COLORSPACE_RGB ||
++        desc->colorspace == UTIL_FORMAT_COLORSPACE_SRGB) &&
++       desc->swizzle[0] == PIPE_SWIZZLE_X &&
++       desc->swizzle[1] == PIPE_SWIZZLE_0 &&
++       desc->swizzle[2] == PIPE_SWIZZLE_0 &&
++       desc->swizzle[3] == PIPE_SWIZZLE_Y) {
++      return true;
++   }
++   return false;
++}
++
++bool
++util_format_is_red_green(enum pipe_format format)
++{
++   const struct util_format_description *desc =
++      util_format_description(format);
++
++   if ((desc->colorspace == UTIL_FORMAT_COLORSPACE_RGB ||
++        desc->colorspace == UTIL_FORMAT_COLORSPACE_SRGB) &&
++       desc->swizzle[0] == PIPE_SWIZZLE_X &&
++       desc->swizzle[1] == PIPE_SWIZZLE_Y &&
++       desc->swizzle[2] == PIPE_SWIZZLE_0 &&
++       desc->swizzle[3] == PIPE_SWIZZLE_1) {
++      return true;
++   }
++   return false;
++}
+ 
+ bool
+ util_format_is_intensity(enum pipe_format format)
+diff --git a/src/util/format/u_format.h b/src/util/format/u_format.h
+index 93de204bd3e..8c42adf5b2d 100644
+--- a/src/util/format/u_format.h
++++ b/src/util/format/u_format.h
+@@ -751,6 +751,11 @@ util_format_is_alpha(enum pipe_format format) ATTRIBUTE_CONST;
+ bool
+ util_format_is_luminance_alpha(enum pipe_format format) ATTRIBUTE_CONST;
+ 
++bool
++util_format_is_red_alpha(enum pipe_format format) ATTRIBUTE_CONST;
++
++bool
++util_format_is_red_green(enum pipe_format format) ATTRIBUTE_CONST;
+ 
+ bool
+ util_format_is_intensity(enum pipe_format format) ATTRIBUTE_CONST;
+-- 
+2.41.0
+
