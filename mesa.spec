@@ -69,7 +69,7 @@
 Name:           mesa
 Summary:        Mesa graphics libraries
 Version:        23.3.0
-Release:        10%{?dist}
+Release:        11%{?dist}
 %global ver main
 License:        MIT
 URL:            http://www.mesa3d.org
@@ -81,7 +81,7 @@ Source0:       https://gitlab.freedesktop.org/mesa/mesa/-/archive/main/mesa-main
 #Source1:        Mesa-MLAA-License-Clarification-Email.txt
 #Patch1:         0001-Squashed-commit-of-the-following.patch
 
-Patch1:          0001-Squashed-commit-of-the-following.patch
+#Patch1:          0001-Squashed-commit-of-the-following.patch
 
 BuildRequires:  meson >= 0.45
 BuildRequires:  gcc
