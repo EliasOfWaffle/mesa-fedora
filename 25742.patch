@@ -1,0 +1,50 @@
+From 88b9b5df61c1cd150866efddc0aeec0b1206c57a Mon Sep 17 00:00:00 2001
+From: Caio Oliveira <caio.oliveira@intel.com>
+Date: Sun, 15 Oct 2023 12:21:50 -0700
+Subject: [PATCH] intel/compiler: Fix opt_zero_samples for Gen7+
+
+Update the optimization to also consider SENDs to the sampler.  This
+is now needed since the logical texture operations will lower directly
+to a SEND in Gen7+.
+
+Only track the non-SEND opcodes that are applicable to earlier versions.
+---
+ src/intel/compiler/brw_fs.cpp | 21 ++++++++++++++++++++-
+ 1 file changed, 20 insertions(+), 1 deletion(-)
+
+diff --git a/src/intel/compiler/brw_fs.cpp b/src/intel/compiler/brw_fs.cpp
+index db67b3325769..128cebc8d509 100644
+--- a/src/intel/compiler/brw_fs.cpp
++++ b/src/intel/compiler/brw_fs.cpp
+@@ -3100,8 +3100,27 @@ fs_visitor::opt_zero_samples()
+    bool progress = false;
+ 
+    foreach_block_and_inst(block, fs_inst, inst, cfg) {
+-      if (!inst->is_tex())
++      switch (inst->opcode) {
++      case SHADER_OPCODE_SEND:
++         if (inst->sfid != BRW_SFID_SAMPLER)
++            continue;
++         break;
++
++      /* Prior to Gen7, texture opcodes are used before lowering to SEND. */
++      case SHADER_OPCODE_TEX:
++      case FS_OPCODE_TXB:
++      case SHADER_OPCODE_TXD:
++      case SHADER_OPCODE_TXF:
++      case SHADER_OPCODE_TXF_CMS:
++      case SHADER_OPCODE_TXL:
++      case SHADER_OPCODE_TXS:
++      case SHADER_OPCODE_LOD:
++      case SHADER_OPCODE_SAMPLEINFO:
++         break;
++
++      default:
+          continue;
++      }
+ 
+       fs_inst *load_payload = (fs_inst *) inst->prev;
+ 
+-- 
+GitLab
+
