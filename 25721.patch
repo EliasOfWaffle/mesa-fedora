@@ -1,0 +1,247 @@
+From 7e019ece48882f59632eb8863e450f3549334b6f Mon Sep 17 00:00:00 2001
+From: Caio Oliveira <caio.oliveira@intel.com>
+Date: Mon, 9 Oct 2023 08:23:53 -0700
+Subject: [PATCH] intel/compiler: Remove is_tex()
+
+The current name doesn't cover all the tex related instructions and
+in all but one usage, we already have a switch statement to dispatch
+per instruction type, so is more natural to list the instructions we
+care there.
+
+With this change, the fs_inst::size_read() generated code gets
+simplified (the "tex" entries get added to the switch jump table
+in gcc) and the default case loses the conditional handling tex.
+
+This reduces shader compilation time, as illustrated by replaying
+fossils:
+
+```
+// Rise of the Tomb Raider (n=7)
+Difference at 95.0% confidence
+	-1.59143 +/- 0.0181509
+	-5.29116% +/- 0.0603479%
+
+// Cyberpunk 2077 (n=5)
+Difference at 95.0% confidence
+	-3.33 +/- 0.126683
+	-2.79992% +/- 0.106517%
+```
+
+Suggested-by: Kenneth Graunke <kenneth@whitecape.org>
+---
+ src/intel/compiler/brw_fs.cpp     | 83 +++++++++++++++++++++++++++----
+ src/intel/compiler/brw_ir.h       |  1 -
+ src/intel/compiler/brw_shader.cpp | 21 --------
+ src/intel/compiler/brw_vec4.cpp   | 19 +++++--
+ 4 files changed, 89 insertions(+), 35 deletions(-)
+
+diff --git a/src/intel/compiler/brw_fs.cpp b/src/intel/compiler/brw_fs.cpp
+index ba3404258bf8a..e5fbd25342d4b 100644
+--- a/src/intel/compiler/brw_fs.cpp
++++ b/src/intel/compiler/brw_fs.cpp
+@@ -241,11 +241,24 @@ fs_inst::is_send_from_grf() const
+       return src[1].file == VGRF;
+    case FS_OPCODE_FB_WRITE:
+    case FS_OPCODE_FB_READ:
++   case SHADER_OPCODE_TEX:
++   case FS_OPCODE_TXB:
++   case SHADER_OPCODE_TXD:
++   case SHADER_OPCODE_TXF:
++   case SHADER_OPCODE_TXF_LZ:
++   case SHADER_OPCODE_TXF_CMS:
++   case SHADER_OPCODE_TXF_CMS_W:
++   case SHADER_OPCODE_TXF_UMS:
++   case SHADER_OPCODE_TXF_MCS:
++   case SHADER_OPCODE_TXL:
++   case SHADER_OPCODE_TXL_LZ:
++   case SHADER_OPCODE_TXS:
++   case SHADER_OPCODE_LOD:
++   case SHADER_OPCODE_TG4:
++   case SHADER_OPCODE_TG4_OFFSET:
++   case SHADER_OPCODE_SAMPLEINFO:
+       return src[0].file == VGRF;
+    default:
+-      if (is_tex())
+-         return src[0].file == VGRF;
+-
+       return false;
+    }
+ }
+@@ -309,16 +322,29 @@ fs_inst::is_payload(unsigned arg) const
+    case SHADER_OPCODE_INTERLOCK:
+    case SHADER_OPCODE_MEMORY_FENCE:
+    case SHADER_OPCODE_BARRIER:
++   case SHADER_OPCODE_TEX:
++   case FS_OPCODE_TXB:
++   case SHADER_OPCODE_TXD:
++   case SHADER_OPCODE_TXF:
++   case SHADER_OPCODE_TXF_LZ:
++   case SHADER_OPCODE_TXF_CMS:
++   case SHADER_OPCODE_TXF_CMS_W:
++   case SHADER_OPCODE_TXF_UMS:
++   case SHADER_OPCODE_TXF_MCS:
++   case SHADER_OPCODE_TXL:
++   case SHADER_OPCODE_TXL_LZ:
++   case SHADER_OPCODE_TXS:
++   case SHADER_OPCODE_LOD:
++   case SHADER_OPCODE_TG4:
++   case SHADER_OPCODE_TG4_OFFSET:
++   case SHADER_OPCODE_SAMPLEINFO:
+       return arg == 0;
+ 
+    case SHADER_OPCODE_SEND:
+       return arg == 2 || arg == 3;
+ 
+    default:
+-      if (is_tex())
+-         return arg == 0;
+-      else
+-         return false;
++      return false;
+    }
+ }
+ 
+@@ -910,10 +936,28 @@ fs_inst::size_read(int arg) const
+       }
+       break;
+ 
+-   default:
+-      if (arg == 0 && src[0].file == VGRF && is_tex())
++   case SHADER_OPCODE_TEX:
++   case FS_OPCODE_TXB:
++   case SHADER_OPCODE_TXD:
++   case SHADER_OPCODE_TXF:
++   case SHADER_OPCODE_TXF_LZ:
++   case SHADER_OPCODE_TXF_CMS:
++   case SHADER_OPCODE_TXF_CMS_W:
++   case SHADER_OPCODE_TXF_UMS:
++   case SHADER_OPCODE_TXF_MCS:
++   case SHADER_OPCODE_TXL:
++   case SHADER_OPCODE_TXL_LZ:
++   case SHADER_OPCODE_TXS:
++   case SHADER_OPCODE_LOD:
++   case SHADER_OPCODE_TG4:
++   case SHADER_OPCODE_TG4_OFFSET:
++   case SHADER_OPCODE_SAMPLEINFO:
++      if (arg == 0 && src[0].file == VGRF)
+          return mlen * REG_SIZE;
+       break;
++
++   default:
++      break;
+    }
+ 
+    switch (src[arg].file) {
+@@ -3104,8 +3148,27 @@ fs_visitor::opt_zero_samples()
+    bool progress = false;
+ 
+    foreach_block_and_inst(block, fs_inst, inst, cfg) {
+-      if (!inst->is_tex())
++      switch (inst->opcode) {
++      case SHADER_OPCODE_TEX:
++      case FS_OPCODE_TXB:
++      case SHADER_OPCODE_TXD:
++      case SHADER_OPCODE_TXF:
++      case SHADER_OPCODE_TXF_LZ:
++      case SHADER_OPCODE_TXF_CMS:
++      case SHADER_OPCODE_TXF_CMS_W:
++      case SHADER_OPCODE_TXF_UMS:
++      case SHADER_OPCODE_TXF_MCS:
++      case SHADER_OPCODE_TXL:
++      case SHADER_OPCODE_TXL_LZ:
++      case SHADER_OPCODE_TXS:
++      case SHADER_OPCODE_LOD:
++      case SHADER_OPCODE_TG4:
++      case SHADER_OPCODE_TG4_OFFSET:
++      case SHADER_OPCODE_SAMPLEINFO:
++         break;
++      default:
+          continue;
++      }
+ 
+       fs_inst *load_payload = (fs_inst *) inst->prev;
+ 
+diff --git a/src/intel/compiler/brw_ir.h b/src/intel/compiler/brw_ir.h
+index a123a03ba4937..b77668a5e46a4 100644
+--- a/src/intel/compiler/brw_ir.h
++++ b/src/intel/compiler/brw_ir.h
+@@ -96,7 +96,6 @@ struct bblock_t;
+ 
+ struct backend_instruction : public exec_node {
+    bool is_3src(const struct brw_compiler *compiler) const;
+-   bool is_tex() const;
+    bool is_math() const;
+    bool is_control_flow_begin() const;
+    bool is_control_flow_end() const;
+diff --git a/src/intel/compiler/brw_shader.cpp b/src/intel/compiler/brw_shader.cpp
+index 423c1976b7c04..c0a266009b7a3 100644
+--- a/src/intel/compiler/brw_shader.cpp
++++ b/src/intel/compiler/brw_shader.cpp
+@@ -849,27 +849,6 @@ backend_instruction::is_3src(const struct brw_compiler *compiler) const
+    return ::is_3src(&compiler->isa, opcode);
+ }
+ 
+-bool
+-backend_instruction::is_tex() const
+-{
+-   return (opcode == SHADER_OPCODE_TEX ||
+-           opcode == FS_OPCODE_TXB ||
+-           opcode == SHADER_OPCODE_TXD ||
+-           opcode == SHADER_OPCODE_TXF ||
+-           opcode == SHADER_OPCODE_TXF_LZ ||
+-           opcode == SHADER_OPCODE_TXF_CMS ||
+-           opcode == SHADER_OPCODE_TXF_CMS_W ||
+-           opcode == SHADER_OPCODE_TXF_UMS ||
+-           opcode == SHADER_OPCODE_TXF_MCS ||
+-           opcode == SHADER_OPCODE_TXL ||
+-           opcode == SHADER_OPCODE_TXL_LZ ||
+-           opcode == SHADER_OPCODE_TXS ||
+-           opcode == SHADER_OPCODE_LOD ||
+-           opcode == SHADER_OPCODE_TG4 ||
+-           opcode == SHADER_OPCODE_TG4_OFFSET ||
+-           opcode == SHADER_OPCODE_SAMPLEINFO);
+-}
+-
+ bool
+ backend_instruction::is_math() const
+ {
+diff --git a/src/intel/compiler/brw_vec4.cpp b/src/intel/compiler/brw_vec4.cpp
+index 57449a61a0272..67baec9f44af3 100644
+--- a/src/intel/compiler/brw_vec4.cpp
++++ b/src/intel/compiler/brw_vec4.cpp
+@@ -290,6 +290,22 @@ vec4_instruction::can_do_writemask(const struct intel_device_info *devinfo)
+    case TES_OPCODE_ADD_INDIRECT_URB_OFFSET:
+    case VEC4_OPCODE_URB_READ:
+    case SHADER_OPCODE_MOV_INDIRECT:
++   case SHADER_OPCODE_TEX:
++   case FS_OPCODE_TXB:
++   case SHADER_OPCODE_TXD:
++   case SHADER_OPCODE_TXF:
++   case SHADER_OPCODE_TXF_LZ:
++   case SHADER_OPCODE_TXF_CMS:
++   case SHADER_OPCODE_TXF_CMS_W:
++   case SHADER_OPCODE_TXF_UMS:
++   case SHADER_OPCODE_TXF_MCS:
++   case SHADER_OPCODE_TXL:
++   case SHADER_OPCODE_TXL_LZ:
++   case SHADER_OPCODE_TXS:
++   case SHADER_OPCODE_LOD:
++   case SHADER_OPCODE_TG4:
++   case SHADER_OPCODE_TG4_OFFSET:
++   case SHADER_OPCODE_SAMPLEINFO:
+       return false;
+    default:
+       /* The MATH instruction on Gfx6 only executes in align1 mode, which does
+@@ -298,9 +314,6 @@ vec4_instruction::can_do_writemask(const struct intel_device_info *devinfo)
+       if (devinfo->ver == 6 && is_math())
+          return false;
+ 
+-      if (is_tex())
+-         return false;
+-
+       return true;
+    }
+ }
+-- 
+GitLab
+

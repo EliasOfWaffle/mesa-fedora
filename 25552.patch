@@ -1,0 +1,102 @@
+From dd5343c0959500c2c651c98bf269762f5eb9b76b Mon Sep 17 00:00:00 2001
+From: Emma Anholt <emma@anholt.net>
+Date: Wed, 4 Oct 2023 14:01:30 -0700
+Subject: [PATCH] brw: Use the common NIR lowering for fquantize.
+
+This generates one extra instruction to set the rounding mode to RTE due
+to f2f16_rtne in the lowering.  If the rounding mode should be undef, as
+was previously being done in the backend, then we should probably fix up
+the core lowering as well.
+---
+ src/intel/compiler/brw_compiler.c   |  1 +
+ src/intel/compiler/brw_fs_nir.cpp   | 26 --------------------------
+ src/intel/compiler/brw_vec4_nir.cpp | 24 ------------------------
+ 3 files changed, 1 insertion(+), 50 deletions(-)
+
+diff --git a/src/intel/compiler/brw_compiler.c b/src/intel/compiler/brw_compiler.c
+index 4fbcf5ad880d4..09b54fa71fb9e 100644
+--- a/src/intel/compiler/brw_compiler.c
++++ b/src/intel/compiler/brw_compiler.c
+@@ -39,6 +39,7 @@
+    .lower_usub_borrow = true,                                                 \
+    .lower_flrp64 = true,                                                      \
+    .lower_fisnormal = true,                                                   \
++   .lower_fquantize2f16 = true,                                               \
+    .lower_isign = true,                                                       \
+    .lower_ldexp = true,                                                       \
+    .lower_bitfield_extract = true,                                            \
+diff --git a/src/intel/compiler/brw_fs_nir.cpp b/src/intel/compiler/brw_fs_nir.cpp
+index 34df9a8f43606..d44bbb3b2f55e 100644
+--- a/src/intel/compiler/brw_fs_nir.cpp
++++ b/src/intel/compiler/brw_fs_nir.cpp
+@@ -1577,32 +1577,6 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
+       }
+       break;
+ 
+-   case nir_op_fquantize2f16: {
+-      fs_reg tmp16 = bld.vgrf(BRW_REGISTER_TYPE_D);
+-      fs_reg tmp32 = bld.vgrf(BRW_REGISTER_TYPE_F);
+-      fs_reg zero = bld.vgrf(BRW_REGISTER_TYPE_F);
+-
+-      /* The destination stride must be at least as big as the source stride. */
+-      tmp16 = subscript(tmp16, BRW_REGISTER_TYPE_HF, 0);
+-
+-      /* Check for denormal */
+-      fs_reg abs_src0 = op[0];
+-      abs_src0.abs = true;
+-      bld.CMP(bld.null_reg_f(), abs_src0, brw_imm_f(ldexpf(1.0, -14)),
+-              BRW_CONDITIONAL_L);
+-      /* Get the appropriately signed zero */
+-      bld.AND(retype(zero, BRW_REGISTER_TYPE_UD),
+-              retype(op[0], BRW_REGISTER_TYPE_UD),
+-              brw_imm_ud(0x80000000));
+-      /* Do the actual F32 -> F16 -> F32 conversion */
+-      bld.F32TO16(tmp16, op[0]);
+-      bld.F16TO32(tmp32, tmp16);
+-      /* Select that or zero based on normal status */
+-      inst = bld.SEL(result, zero, tmp32);
+-      inst->predicate = BRW_PREDICATE_NORMAL;
+-      break;
+-   }
+-
+    case nir_op_imin:
+    case nir_op_umin:
+    case nir_op_fmin:
+diff --git a/src/intel/compiler/brw_vec4_nir.cpp b/src/intel/compiler/brw_vec4_nir.cpp
+index 0c742f852c460..face1259ddda4 100644
+--- a/src/intel/compiler/brw_vec4_nir.cpp
++++ b/src/intel/compiler/brw_vec4_nir.cpp
+@@ -1353,30 +1353,6 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
+       }
+       break;
+ 
+-   case nir_op_fquantize2f16: {
+-      /* See also vec4_visitor::emit_pack_half_2x16() */
+-      src_reg tmp16 = src_reg(this, glsl_type::uvec4_type);
+-      src_reg tmp32 = src_reg(this, glsl_type::vec4_type);
+-      src_reg zero = src_reg(this, glsl_type::vec4_type);
+-
+-      /* Check for denormal */
+-      src_reg abs_src0 = op[0];
+-      abs_src0.abs = true;
+-      emit(CMP(dst_null_f(), abs_src0, brw_imm_f(ldexpf(1.0, -14)),
+-               BRW_CONDITIONAL_L));
+-      /* Get the appropriately signed zero */
+-      emit(AND(retype(dst_reg(zero), BRW_REGISTER_TYPE_UD),
+-               retype(op[0], BRW_REGISTER_TYPE_UD),
+-               brw_imm_ud(0x80000000)));
+-      /* Do the actual F32 -> F16 -> F32 conversion */
+-      emit(F32TO16(dst_reg(tmp16), op[0]));
+-      emit(F16TO32(dst_reg(tmp32), tmp16));
+-      /* Select that or zero based on normal status */
+-      inst = emit(BRW_OPCODE_SEL, dst, zero, tmp32);
+-      inst->predicate = BRW_PREDICATE_NORMAL;
+-      break;
+-   }
+-
+    case nir_op_imin:
+    case nir_op_umin:
+       assert(instr->def.bit_size < 64);
+-- 
+GitLab
+

@@ -1,0 +1,136 @@
+From b045c25c252fb6021e1d6cdb81f2695f729b8277 Mon Sep 17 00:00:00 2001
+From: Ian Romanick <ian.d.romanick@intel.com>
+Date: Wed, 20 Sep 2023 10:02:14 -0700
+Subject: [PATCH] intel/fs: Use nir_opt_sink
+
+The shader-db results on most platforms are pretty mixed. However, this
+seems to be a decent improvement in fossil-db.
+
+Enabling nir_move_alu on Broadwell and Ivy Bridge yields **horrible**
+results in shader-db. I don't have any interesting fossils to try on
+Broadwell, so I was unable to try that path.
+
+shader-db results:
+
+All Intel Sky Lake and newer platforms had similar results. (Ice Lake shown)
+total instructions in shared programs: 20313945 -> 20315251 (<.01%)
+instructions in affected programs: 1572299 -> 1573605 (0.08%)
+helped: 307 / HURT: 1726
+
+total cycles in shared programs: 849567078 -> 850149516 (0.07%)
+cycles in affected programs: 474910571 -> 475493009 (0.12%)
+helped: 1841 / HURT: 3277
+
+total spills in shared programs: 4840 -> 4828 (-0.25%)
+spills in affected programs: 406 -> 394 (-2.96%)
+helped: 8 / HURT: 2
+
+total fills in shared programs: 5914 -> 5997 (1.40%)
+fills in affected programs: 1633 -> 1716 (5.08%)
+helped: 8 / HURT: 2
+
+LOST:   25
+GAINED: 22
+
+Broadwell
+total instructions in shared programs: 18195139 -> 18195556 (<.01%)
+instructions in affected programs: 785414 -> 785831 (0.05%)
+helped: 8 / HURT: 413
+
+total cycles in shared programs: 934627480 -> 934797507 (0.02%)
+cycles in affected programs: 333131673 -> 333301700 (0.05%)
+helped: 262 / HURT: 384
+
+total spills in shared programs: 13734 -> 13726 (-0.06%)
+spills in affected programs: 368 -> 360 (-2.17%)
+helped: 4 / HURT: 0
+
+total fills in shared programs: 16761 -> 16757 (-0.02%)
+fills in affected programs: 292 -> 288 (-1.37%)
+helped: 4 / HURT: 0
+
+LOST:   4
+GAINED: 10
+
+Haswell and Ivy Bridge had similar results. (Haswell shown)
+total instructions in shared programs: 16965603 -> 16963050 (-0.02%)
+instructions in affected programs: 1022317 -> 1019764 (-0.25%)
+helped: 552 / HURT: 515
+
+total cycles in shared programs: 924550849 -> 925240467 (0.07%)
+cycles in affected programs: 360526478 -> 361216096 (0.19%)
+helped: 980 / HURT: 1080
+
+total spills in shared programs: 13533 -> 13521 (-0.09%)
+spills in affected programs: 84 -> 72 (-14.29%)
+helped: 9 / HURT: 0
+
+total fills in shared programs: 15436 -> 15418 (-0.12%)
+fills in affected programs: 117 -> 99 (-15.38%)
+helped: 9 / HURT: 0
+
+LOST:   5
+GAINED: 0
+
+Sandy Bridge
+total instructions in shared programs: 14106398 -> 14106165 (<.01%)
+instructions in affected programs: 153929 -> 153696 (-0.15%)
+helped: 323 / HURT: 135
+
+total cycles in shared programs: 774991052 -> 774996682 (<.01%)
+cycles in affected programs: 40595058 -> 40600688 (0.01%)
+helped: 1079 / HURT: 806
+
+LOST:   1
+GAINED: 0
+
+Iron Lake and GM45 had similar results. (Iron Lake shown)
+total instructions in shared programs: 8484491 -> 8483171 (-0.02%)
+instructions in affected programs: 126302 -> 124982 (-1.05%)
+helped: 332 / HURT: 60
+
+total cycles in shared programs: 257755778 -> 257791352 (0.01%)
+cycles in affected programs: 8285484 -> 8321058 (0.43%)
+helped: 159 / HURT: 559
+
+fossil-db results:
+
+All Intel platforms had similar results. (Ice Lake shown)
+Totals:
+Instrs: 152206331 -> 152193227 (-0.01%); split: -0.01%, +0.00%
+Cycles: 14710061219 -> 14708671147 (-0.01%); split: -0.01%, +0.00%
+Send messages: 7652378 -> 7652354 (-0.00%)
+Spill count: 42723 -> 40952 (-4.15%)
+Fill count: 73283 -> 67954 (-7.27%)
+Scratch Memory Size: 2333696 -> 2258944 (-3.20%)
+
+Totals from 2985 (0.46% of 645918) affected shaders:
+Instrs: 2144843 -> 2131739 (-0.61%); split: -0.68%, +0.07%
+Cycles: 5357541997 -> 5356151925 (-0.03%); split: -0.03%, +0.01%
+Send messages: 136130 -> 136106 (-0.02%)
+Spill count: 7813 -> 6042 (-22.67%)
+Fill count: 20106 -> 14777 (-26.50%)
+Scratch Memory Size: 315392 -> 240640 (-23.70%)
+---
+ src/intel/compiler/brw_nir.c | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/src/intel/compiler/brw_nir.c b/src/intel/compiler/brw_nir.c
+index 5d21d0f70ebb2..6340b33ae9aa7 100644
+--- a/src/intel/compiler/brw_nir.c
++++ b/src/intel/compiler/brw_nir.c
+@@ -961,6 +961,11 @@ brw_preprocess_nir(const struct brw_compiler *compiler, nir_shader *nir,
+    OPT(nir_split_var_copies);
+    OPT(nir_split_struct_vars, nir_var_function_temp);
+ 
++   const nir_move_options sink_options =
++      nir_move_const_undef | nir_move_copies | (devinfo->ver >= 9 ? nir_move_alu : 0);
++
++   OPT(nir_opt_sink, sink_options);
++
+    brw_nir_optimize(nir, compiler);
+ 
+    OPT(nir_lower_doubles, opts->softfp64, nir->options->lower_doubles_options);
+-- 
+GitLab
+
