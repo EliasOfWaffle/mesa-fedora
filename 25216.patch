@@ -1,0 +1,651 @@
+From 35c069b803d4098eae501006e7308c9be0f690e8 Mon Sep 17 00:00:00 2001
+From: Ian Romanick <ian.d.romanick@intel.com>
+Date: Tue, 12 Sep 2023 09:09:02 -0700
+Subject: [PATCH 1/7] intel/vec4: Don't emit an empty ELSE
+
+This matches the behavior of fs_visitor::nir_emit_if.
+
+This is not technically wrong, but the cfg_t generates some invalid
+parent / child links in this case.
+
+Reviewed-by: Caio Oliveira <caio.oliveira@intel.com>
+---
+ src/intel/compiler/brw_vec4_nir.cpp | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/src/intel/compiler/brw_vec4_nir.cpp b/src/intel/compiler/brw_vec4_nir.cpp
+index 0c742f852c460..f9f089be9c03b 100644
+--- a/src/intel/compiler/brw_vec4_nir.cpp
++++ b/src/intel/compiler/brw_vec4_nir.cpp
+@@ -101,10 +101,10 @@ vec4_visitor::nir_emit_if(nir_if *if_stmt)
+ 
+    nir_emit_cf_list(&if_stmt->then_list);
+ 
+-   /* note: if the else is empty, dead CF elimination will remove it */
+-   emit(BRW_OPCODE_ELSE);
+-
+-   nir_emit_cf_list(&if_stmt->else_list);
++   if (!nir_cf_list_is_empty_block(&if_stmt->else_list)) {
++      emit(BRW_OPCODE_ELSE);
++      nir_emit_cf_list(&if_stmt->else_list);
++   }
+ 
+    emit(BRW_OPCODE_ENDIF);
+ }
+-- 
+GitLab
+
+
+From 838d6c5491521920fa7db7d466119c4e36f31b4b Mon Sep 17 00:00:00 2001
+From: Ian Romanick <ian.d.romanick@intel.com>
+Date: Mon, 11 Sep 2023 09:10:47 -0700
+Subject: [PATCH 2/7] intel/compiler: Add basic CFG validation
+
+---
+ src/intel/compiler/brw_cfg.cpp         | 49 ++++++++++++++++++++++++++
+ src/intel/compiler/brw_cfg.h           |  2 ++
+ src/intel/compiler/brw_fs_validate.cpp |  2 ++
+ src/intel/compiler/brw_vec4.cpp        |  2 ++
+ 4 files changed, 55 insertions(+)
+
+diff --git a/src/intel/compiler/brw_cfg.cpp b/src/intel/compiler/brw_cfg.cpp
+index 4ee8cc823208c..19bf840b985b2 100644
+--- a/src/intel/compiler/brw_cfg.cpp
++++ b/src/intel/compiler/brw_cfg.cpp
+@@ -615,3 +615,52 @@ cfg_t::dump_cfg()
+    }
+    printf("}\n");
+ }
++
++#define cfgv_assert(assertion)                                          \
++   {                                                                    \
++      if (!(assertion)) {                                               \
++         fprintf(stderr, "ASSERT: CFG validation in %s failed!\n", stage_abbrev); \
++         fprintf(stderr, "%s:%d: '%s' failed\n", __FILE__, __LINE__, #assertion);  \
++         abort();                                                       \
++      }                                                                 \
++   }
++
++void
++cfg_t::validate(const char *stage_abbrev)
++{
++   foreach_block(block, this) {
++      foreach_list_typed(bblock_link, successor, link, &block->children) {
++         /* Each successor of a block must have a predecessor link back to
++          * the block.
++          */
++         bool successor_links_back_to_predecessor = false;
++         bblock_t *succ_block = successor->block;
++
++         foreach_list_typed(bblock_link, predecessor, link, &succ_block->parents) {
++            if (predecessor->block == block) {
++               successor_links_back_to_predecessor = true;
++               break;
++            }
++         }
++
++         cfgv_assert(successor_links_back_to_predecessor);
++      }
++
++      foreach_list_typed(bblock_link, predecessor, link, &block->parents) {
++         /* Each predecessor of a block must have a successor link back to
++          * the block.
++          */
++         bool predecessor_links_back_to_successor = false;
++         bblock_t *pred_block = predecessor->block;
++
++         foreach_list_typed(bblock_link, successor, link, &pred_block->children) {
++            if (successor->block == block) {
++               predecessor_links_back_to_successor = true;
++               break;
++            }
++         }
++
++         cfgv_assert(predecessor_links_back_to_successor);
++      }
++   }
++}
+diff --git a/src/intel/compiler/brw_cfg.h b/src/intel/compiler/brw_cfg.h
+index 9e2726f453bc3..1e9fa10898863 100644
+--- a/src/intel/compiler/brw_cfg.h
++++ b/src/intel/compiler/brw_cfg.h
+@@ -325,6 +325,8 @@ struct cfg_t {
+    void dump();
+    void dump_cfg();
+ 
++   void validate(const char *stage_abbrev);
++
+    /**
+     * Propagate bblock_t::end_ip_delta data through the CFG.
+     */
+diff --git a/src/intel/compiler/brw_fs_validate.cpp b/src/intel/compiler/brw_fs_validate.cpp
+index 98d149e224b52..03ce34a2549a1 100644
+--- a/src/intel/compiler/brw_fs_validate.cpp
++++ b/src/intel/compiler/brw_fs_validate.cpp
+@@ -86,6 +86,8 @@ void
+ fs_visitor::validate()
+ {
+ #ifndef NDEBUG
++   cfg->validate(stage_abbrev);
++
+    foreach_block_and_inst (block, fs_inst, inst, cfg) {
+       switch (inst->opcode) {
+       case SHADER_OPCODE_URB_WRITE_LOGICAL: {
+diff --git a/src/intel/compiler/brw_vec4.cpp b/src/intel/compiler/brw_vec4.cpp
+index 21224270d52f9..95941a88865ba 100644
+--- a/src/intel/compiler/brw_vec4.cpp
++++ b/src/intel/compiler/brw_vec4.cpp
+@@ -2378,6 +2378,7 @@ vec4_visitor::run()
+    emit_thread_end();
+ 
+    calculate_cfg();
++   cfg->validate(stage_abbrev);
+ 
+    /* Before any optimization, push array accesses out to scratch
+     * space where we need them to be.  This pass may allocate new
+@@ -2402,6 +2403,7 @@ vec4_visitor::run()
+          backend_shader::dump_instructions(filename);                  \
+       }                                                                \
+                                                                        \
++      cfg->validate(stage_abbrev);                                     \
+       progress = progress || this_progress;                            \
+       this_progress;                                                   \
+    })
+-- 
+GitLab
+
+
+From f72973b8feb2b82603a908d251d6908afef53ba2 Mon Sep 17 00:00:00 2001
+From: Ian Romanick <ian.d.romanick@intel.com>
+Date: Mon, 11 Sep 2023 11:10:30 -0700
+Subject: [PATCH 3/7] intel/compiler: Limit scope of cur_endif variable
+
+Reviewed-by: Caio Oliveira <caio.oliveira@intel.com>
+---
+ src/intel/compiler/brw_cfg.cpp | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/src/intel/compiler/brw_cfg.cpp b/src/intel/compiler/brw_cfg.cpp
+index 19bf840b985b2..84be8fa2082a3 100644
+--- a/src/intel/compiler/brw_cfg.cpp
++++ b/src/intel/compiler/brw_cfg.cpp
+@@ -180,7 +180,6 @@ cfg_t::cfg_t(const backend_shader *s, exec_list *instructions) :
+    bblock_t *entry = new_block();
+    bblock_t *cur_if = NULL;    /**< BB ending with IF. */
+    bblock_t *cur_else = NULL;  /**< BB ending with ELSE. */
+-   bblock_t *cur_endif = NULL; /**< BB starting with ENDIF. */
+    bblock_t *cur_do = NULL;    /**< BB starting with DO. */
+    bblock_t *cur_while = NULL; /**< BB immediately following WHILE. */
+    exec_list if_stack, else_stack, do_stack, while_stack;
+@@ -206,7 +205,6 @@ cfg_t::cfg_t(const backend_shader *s, exec_list *instructions) :
+ 
+ 	 cur_if = cur;
+ 	 cur_else = NULL;
+-         cur_endif = NULL;
+ 
+ 	 /* Set up our immediately following block, full of "then"
+ 	  * instructions.
+@@ -231,6 +229,8 @@ cfg_t::cfg_t(const backend_shader *s, exec_list *instructions) :
+ 	 break;
+ 
+       case BRW_OPCODE_ENDIF: {
++         bblock_t *cur_endif;
++
+          if (cur->instructions.is_empty()) {
+             /* New block was just created; use it. */
+             cur_endif = cur;
+-- 
+GitLab
+
+
+From 799a173e73dac40ee4b1d710a88202e04f66a5bf Mon Sep 17 00:00:00 2001
+From: Ian Romanick <ian.d.romanick@intel.com>
+Date: Wed, 13 Sep 2023 10:44:31 -0700
+Subject: [PATCH 4/7] intel/compiler: Delete bidirectional block links in
+ opt_predicated_break
+
+Previously when earlier_block->children.make_empty() was called, the
+child blocks would still have links back to earlier_block.
+---
+ src/intel/compiler/brw_cfg.cpp              | 22 +++++++++++++++++++++
+ src/intel/compiler/brw_cfg.h                | 17 ++++++++++++++++
+ src/intel/compiler/brw_predicated_break.cpp |  4 ++--
+ 3 files changed, 41 insertions(+), 2 deletions(-)
+
+diff --git a/src/intel/compiler/brw_cfg.cpp b/src/intel/compiler/brw_cfg.cpp
+index 84be8fa2082a3..cd8bbaa4f010d 100644
+--- a/src/intel/compiler/brw_cfg.cpp
++++ b/src/intel/compiler/brw_cfg.cpp
+@@ -166,6 +166,28 @@ bblock_t::dump() const
+    }
+ }
+ 
++void
++bblock_t::unlink_list(exec_list *list)
++{
++   assert(list == &parents || list == &children);
++   const bool remove_parent = list == &children;
++
++   foreach_list_typed_safe(bblock_link, link, link, list) {
++      /* Also break the links from the other block back to this block. */
++      exec_list *sub_list = remove_parent ? &link->block->parents : &link->block->children;
++
++      foreach_list_typed_safe(bblock_link, sub_link, link, sub_list) {
++         if (sub_link->block == this) {
++            sub_link->link.remove();
++            ralloc_free(sub_link);
++         }
++      }
++
++      link->link.remove();
++      ralloc_free(link);
++   }
++}
++
+ cfg_t::cfg_t(const backend_shader *s, exec_list *instructions) :
+    s(s)
+ {
+diff --git a/src/intel/compiler/brw_cfg.h b/src/intel/compiler/brw_cfg.h
+index 1e9fa10898863..d8e614042ab4c 100644
+--- a/src/intel/compiler/brw_cfg.h
++++ b/src/intel/compiler/brw_cfg.h
+@@ -107,6 +107,23 @@ struct bblock_t {
+ 
+    backend_instruction *first_non_control_flow_inst();
+    backend_instruction *last_non_control_flow_inst();
++
++private:
++   /**
++    * \sa unlink_parents, unlink_children
++    */
++   void unlink_list(exec_list *);
++
++public:
++   void unlink_parents()
++   {
++      unlink_list(&parents);
++   }
++
++   void unlink_children()
++   {
++      unlink_list(&children);
++   }
+ #endif
+ 
+    struct exec_node link;
+diff --git a/src/intel/compiler/brw_predicated_break.cpp b/src/intel/compiler/brw_predicated_break.cpp
+index eaa4320db8f34..ee6efb92f61ae 100644
+--- a/src/intel/compiler/brw_predicated_break.cpp
++++ b/src/intel/compiler/brw_predicated_break.cpp
+@@ -159,13 +159,13 @@ opt_predicated_break(backend_shader *s)
+       endif_inst->remove(endif_block);
+ 
+       if (!earlier_block->ends_with_control_flow()) {
+-         earlier_block->children.make_empty();
++         earlier_block->unlink_children();
+          earlier_block->add_successor(s->cfg->mem_ctx, jump_block,
+                                       bblock_link_logical);
+       }
+ 
+       if (!later_block->starts_with_control_flow()) {
+-         later_block->parents.make_empty();
++         later_block->unlink_parents();
+       }
+       jump_block->add_successor(s->cfg->mem_ctx, later_block,
+                                 bblock_link_logical);
+-- 
+GitLab
+
+
+From b2dbcc4cbbd7b022b6fa47cb9ec983cf95eceee3 Mon Sep 17 00:00:00 2001
+From: Ian Romanick <ian.d.romanick@intel.com>
+Date: Wed, 13 Sep 2023 12:07:30 -0700
+Subject: [PATCH 5/7] intel/compiler: Don't create extra CFG links in
+ opt_predicated_break
+
+---
+ src/intel/compiler/brw_predicated_break.cpp | 36 +++++++++++++++++++--
+ 1 file changed, 34 insertions(+), 2 deletions(-)
+
+diff --git a/src/intel/compiler/brw_predicated_break.cpp b/src/intel/compiler/brw_predicated_break.cpp
+index ee6efb92f61ae..118d71b377350 100644
+--- a/src/intel/compiler/brw_predicated_break.cpp
++++ b/src/intel/compiler/brw_predicated_break.cpp
+@@ -159,6 +159,14 @@ opt_predicated_break(backend_shader *s)
+       endif_inst->remove(endif_block);
+ 
+       if (!earlier_block->ends_with_control_flow()) {
++         /* FIXME: There is a potential problem here. If earlier_block starts
++          * with a DO instruction, this will delete the physical link to the
++          * WHILE block. It is unclear whether ENDIF has the same potential
++          * problem.
++          */
++         assert(earlier_block->start() == NULL ||
++                earlier_block->start()->opcode != BRW_OPCODE_DO);
++
+          earlier_block->unlink_children();
+          earlier_block->add_successor(s->cfg->mem_ctx, jump_block,
+                                       bblock_link_logical);
+@@ -167,8 +175,32 @@ opt_predicated_break(backend_shader *s)
+       if (!later_block->starts_with_control_flow()) {
+          later_block->unlink_parents();
+       }
+-      jump_block->add_successor(s->cfg->mem_ctx, later_block,
+-                                bblock_link_logical);
++
++      /* If jump_block already has a link to later_block, don't create another
++       * one. Instead, promote the link to logical.
++       */
++      bool need_to_link = true;
++      foreach_list_typed(bblock_link, link, link, &jump_block->children) {
++         if (link->block == later_block) {
++            assert(later_block->starts_with_control_flow());
++
++            /* Update the link from later_block back to jump_block. */
++            foreach_list_typed(bblock_link, parent_link, link, &later_block->parents) {
++               if (parent_link->block == jump_block) {
++                  parent_link->kind = bblock_link_logical;
++               }
++            }
++
++            /* Update the link from jump_block to later_block. */
++            link->kind = bblock_link_logical;
++            need_to_link = false;
++         }
++      }
++
++      if (need_to_link) {
++         jump_block->add_successor(s->cfg->mem_ctx, later_block,
++                                   bblock_link_logical);
++      }
+ 
+       if (earlier_block->can_combine_with(jump_block)) {
+          earlier_block->combine_with(jump_block);
+-- 
+GitLab
+
+
+From 4b3b22cb0e2b02acb59966704f16f3c5402a73b3 Mon Sep 17 00:00:00 2001
+From: Ian Romanick <ian.d.romanick@intel.com>
+Date: Mon, 11 Sep 2023 10:01:22 -0700
+Subject: [PATCH 6/7] intel/compiler: Don't create extra CFG links when
+ deleting a block
+
+The previous is_successor_of and is_predecessor_of checks prevented
+creating a physical link when a logical link already existed. However, a
+logical link could be added when a physical link already existed. This
+change causes an existing physical link to be "promoted" to a logical
+link.
+---
+ src/intel/compiler/brw_cfg.cpp | 50 ++++++++++++++++++++++++++++------
+ 1 file changed, 42 insertions(+), 8 deletions(-)
+
+diff --git a/src/intel/compiler/brw_cfg.cpp b/src/intel/compiler/brw_cfg.cpp
+index cd8bbaa4f010d..56783a942e47e 100644
+--- a/src/intel/compiler/brw_cfg.cpp
++++ b/src/intel/compiler/brw_cfg.cpp
+@@ -450,8 +450,25 @@ cfg_t::remove_block(bblock_t *block)
+ 
+       /* Add removed-block's successors to its predecessors' successor lists. */
+       foreach_list_typed (bblock_link, successor, link, &block->children) {
+-         if (!successor->block->is_successor_of(predecessor->block,
+-                                                successor->kind)) {
++         bool need_to_link = true;
++
++         foreach_list_typed_safe (bblock_link, child, link, &predecessor->block->children) {
++            /* There is already a link between the two blocks. If the links
++             * are the same kind or the link is logical, do nothing. If the
++             * existing link is physical and the proposed new link is logical,
++             * promote the existing link to logical.
++             *
++             * This is accomplished by taking the minimum of the existing link
++             * kind and the proposed link kind.
++             */
++            if (child->block == successor->block) {
++               child->kind = MIN2(child->kind, successor->kind);
++               need_to_link = false;
++               break;
++            }
++         }
++
++         if (need_to_link) {
+             predecessor->block->children.push_tail(link(mem_ctx,
+                                                         successor->block,
+                                                         successor->kind));
+@@ -471,8 +488,25 @@ cfg_t::remove_block(bblock_t *block)
+ 
+       /* Add removed-block's predecessors to its successors' predecessor lists. */
+       foreach_list_typed (bblock_link, predecessor, link, &block->parents) {
+-         if (!predecessor->block->is_predecessor_of(successor->block,
+-                                                    predecessor->kind)) {
++         bool need_to_link = true;
++
++         foreach_list_typed_safe (bblock_link, parent, link, &successor->block->parents) {
++            /* There is already a link between the two blocks. If the links
++             * are the same kind or the link is logical, do nothing. If the
++             * existing link is physical and the proposed new link is logical,
++             * promote the existing link to logical.
++             *
++             * This is accomplished by taking the minimum of the existing link
++             * kind and the proposed link kind.
++             */
++            if (parent->block == predecessor->block) {
++               parent->kind = MIN2(parent->kind, predecessor->kind);
++               need_to_link = false;
++               break;
++            }
++         }
++
++         if (need_to_link) {
+             successor->block->parents.push_tail(link(mem_ctx,
+                                                      predecessor->block,
+                                                      predecessor->kind));
+@@ -652,7 +686,7 @@ cfg_t::validate(const char *stage_abbrev)
+ {
+    foreach_block(block, this) {
+       foreach_list_typed(bblock_link, successor, link, &block->children) {
+-         /* Each successor of a block must have a predecessor link back to
++         /* Each successor of a block must have one predecessor link back to
+           * the block.
+           */
+          bool successor_links_back_to_predecessor = false;
+@@ -660,8 +694,8 @@ cfg_t::validate(const char *stage_abbrev)
+ 
+          foreach_list_typed(bblock_link, predecessor, link, &succ_block->parents) {
+             if (predecessor->block == block) {
++               cfgv_assert(!successor_links_back_to_predecessor);
+                successor_links_back_to_predecessor = true;
+-               break;
+             }
+          }
+ 
+@@ -669,7 +703,7 @@ cfg_t::validate(const char *stage_abbrev)
+       }
+ 
+       foreach_list_typed(bblock_link, predecessor, link, &block->parents) {
+-         /* Each predecessor of a block must have a successor link back to
++         /* Each predecessor of a block must have one successor link back to
+           * the block.
+           */
+          bool predecessor_links_back_to_successor = false;
+@@ -677,8 +711,8 @@ cfg_t::validate(const char *stage_abbrev)
+ 
+          foreach_list_typed(bblock_link, successor, link, &pred_block->children) {
+             if (successor->block == block) {
++               cfgv_assert(!predecessor_links_back_to_successor);
+                predecessor_links_back_to_successor = true;
+-               break;
+             }
+          }
+ 
+-- 
+GitLab
+
+
+From 0ae0077c10741664faaeb548a50d09996aa7d982 Mon Sep 17 00:00:00 2001
+From: Ian Romanick <ian.d.romanick@intel.com>
+Date: Mon, 11 Sep 2023 11:29:12 -0700
+Subject: [PATCH 7/7] intel/compiler: Don't promote CFG link types when
+ removing a block
+
+Imagine 3 blocks A, B, and C. A has a physical link to B, and B has a
+logical link to C. Previous to this commit, if B were removed, A would
+get a logical link to C. This is not correct.
+
+This was specifically observed to occur when block A was a DO block and
+B was the WHILE block. The DO block would have two logical successors,
+and that is completely invalid.
+
+v2: Assert that the links from A-to-B and B-back-to-A are the same
+kind. Suggested by Caio.
+---
+ src/intel/compiler/brw_cfg.cpp | 44 ++++++++++++++++++++++++++++++----
+ src/intel/compiler/brw_cfg.h   |  3 ++-
+ 2 files changed, 42 insertions(+), 5 deletions(-)
+
+diff --git a/src/intel/compiler/brw_cfg.cpp b/src/intel/compiler/brw_cfg.cpp
+index 56783a942e47e..e179875a645d6 100644
+--- a/src/intel/compiler/brw_cfg.cpp
++++ b/src/intel/compiler/brw_cfg.cpp
+@@ -439,10 +439,14 @@ void
+ cfg_t::remove_block(bblock_t *block)
+ {
+    foreach_list_typed_safe (bblock_link, predecessor, link, &block->parents) {
++      bblock_link_kind old_link_kind = bblock_link_invalid;
++
+       /* Remove block from all of its predecessors' successor lists. */
+       foreach_list_typed_safe (bblock_link, successor, link,
+                                &predecessor->block->children) {
+          if (block == successor->block) {
++            assert(old_link_kind == bblock_link_invalid);
++            old_link_kind = successor->kind;
+             successor->link.remove();
+             ralloc_free(successor);
+          }
+@@ -451,6 +455,7 @@ cfg_t::remove_block(bblock_t *block)
+       /* Add removed-block's successors to its predecessors' successor lists. */
+       foreach_list_typed (bblock_link, successor, link, &block->children) {
+          bool need_to_link = true;
++         bblock_link_kind new_link_kind = MAX2(old_link_kind, successor->kind);
+ 
+          foreach_list_typed_safe (bblock_link, child, link, &predecessor->block->children) {
+             /* There is already a link between the two blocks. If the links
+@@ -462,7 +467,7 @@ cfg_t::remove_block(bblock_t *block)
+              * kind and the proposed link kind.
+              */
+             if (child->block == successor->block) {
+-               child->kind = MIN2(child->kind, successor->kind);
++               child->kind = MIN2(child->kind, new_link_kind);
+                need_to_link = false;
+                break;
+             }
+@@ -471,16 +476,20 @@ cfg_t::remove_block(bblock_t *block)
+          if (need_to_link) {
+             predecessor->block->children.push_tail(link(mem_ctx,
+                                                         successor->block,
+-                                                        successor->kind));
++                                                        new_link_kind));
+          }
+       }
+    }
+ 
+    foreach_list_typed_safe (bblock_link, successor, link, &block->children) {
++      bblock_link_kind old_link_kind = bblock_link_invalid;
++
+       /* Remove block from all of its childrens' parents lists. */
+       foreach_list_typed_safe (bblock_link, predecessor, link,
+                                &successor->block->parents) {
+          if (block == predecessor->block) {
++            assert(old_link_kind == bblock_link_invalid);
++            old_link_kind = predecessor->kind;
+             predecessor->link.remove();
+             ralloc_free(predecessor);
+          }
+@@ -489,6 +498,7 @@ cfg_t::remove_block(bblock_t *block)
+       /* Add removed-block's predecessors to its successors' predecessor lists. */
+       foreach_list_typed (bblock_link, predecessor, link, &block->parents) {
+          bool need_to_link = true;
++         bblock_link_kind new_link_kind = MAX2(old_link_kind, predecessor->kind);
+ 
+          foreach_list_typed_safe (bblock_link, parent, link, &successor->block->parents) {
+             /* There is already a link between the two blocks. If the links
+@@ -500,7 +510,7 @@ cfg_t::remove_block(bblock_t *block)
+              * kind and the proposed link kind.
+              */
+             if (parent->block == predecessor->block) {
+-               parent->kind = MIN2(parent->kind, predecessor->kind);
++               parent->kind = MIN2(parent->kind, new_link_kind);
+                need_to_link = false;
+                break;
+             }
+@@ -509,7 +519,7 @@ cfg_t::remove_block(bblock_t *block)
+          if (need_to_link) {
+             successor->block->parents.push_tail(link(mem_ctx,
+                                                      predecessor->block,
+-                                                     predecessor->kind));
++                                                     new_link_kind));
+          }
+       }
+    }
+@@ -695,6 +705,7 @@ cfg_t::validate(const char *stage_abbrev)
+          foreach_list_typed(bblock_link, predecessor, link, &succ_block->parents) {
+             if (predecessor->block == block) {
+                cfgv_assert(!successor_links_back_to_predecessor);
++               cfgv_assert(successor->kind == predecessor->kind);
+                successor_links_back_to_predecessor = true;
+             }
+          }
+@@ -712,11 +723,36 @@ cfg_t::validate(const char *stage_abbrev)
+          foreach_list_typed(bblock_link, successor, link, &pred_block->children) {
+             if (successor->block == block) {
+                cfgv_assert(!predecessor_links_back_to_successor);
++               cfgv_assert(successor->kind == predecessor->kind);
+                predecessor_links_back_to_successor = true;
+             }
+          }
+ 
+          cfgv_assert(predecessor_links_back_to_successor);
+       }
++
++      backend_instruction *first_inst = block->start();
++      if (first_inst->opcode == BRW_OPCODE_DO) {
++         /* A block starting with DO should have exactly two successors. One
++          * is a physical link to the block starting after the WHILE
++          * instruction. The other is a logical link to the block starting the
++          * body of the loop.
++          */
++         bblock_t *physical_block = nullptr;
++         bblock_t *logical_block = nullptr;
++
++         foreach_list_typed(bblock_link, child, link, &block->children) {
++            if (child->kind == bblock_link_physical) {
++               cfgv_assert(physical_block == nullptr);
++               physical_block = child->block;
++            } else {
++               cfgv_assert(logical_block == nullptr);
++               logical_block = child->block;
++            }
++         }
++
++         cfgv_assert(logical_block != nullptr);
++         cfgv_assert(physical_block != nullptr);
++      }
+    }
+ }
+diff --git a/src/intel/compiler/brw_cfg.h b/src/intel/compiler/brw_cfg.h
+index d8e614042ab4c..c6dbccd479e0c 100644
+--- a/src/intel/compiler/brw_cfg.h
++++ b/src/intel/compiler/brw_cfg.h
+@@ -50,7 +50,8 @@ struct bblock_t;
+  */
+ enum bblock_link_kind {
+    bblock_link_logical = 0,
+-   bblock_link_physical
++   bblock_link_physical,
++   bblock_link_invalid = -1,
+ };
+ 
+ struct bblock_link {
+-- 
+GitLab
+
