@@ -1,0 +1,396 @@
+From 6b2f66bdc72a1e4d038665a9f669b4cd3213d7be Mon Sep 17 00:00:00 2001
+From: Caio Oliveira <caio.oliveira@intel.com>
+Date: Tue, 10 Oct 2023 17:47:39 -0700
+Subject: [PATCH 1/5] intel/fs: Only allocate acp_entry if we are adding one
+
+In practice it seems we are always entering here, haven't looked
+in detail whether at this point we could just assert.  But for now
+only allocate a new acp_entry if we are going to add it.
+---
+ .../compiler/brw_fs_copy_propagation.cpp      | 19 +++++++++----------
+ 1 file changed, 9 insertions(+), 10 deletions(-)
+
+diff --git a/src/intel/compiler/brw_fs_copy_propagation.cpp b/src/intel/compiler/brw_fs_copy_propagation.cpp
+index 6a8429fa2a5d9..aafb47bbcf90e 100644
+--- a/src/intel/compiler/brw_fs_copy_propagation.cpp
++++ b/src/intel/compiler/brw_fs_copy_propagation.cpp
+@@ -1364,17 +1364,16 @@ opt_copy_propagation_local(const brw_compiler *compiler, void *copy_prop_ctx,
+                  inst->src[i].is_contiguous())) {
+                const brw_reg_type t = i < inst->header_size ?
+                   BRW_REGISTER_TYPE_UD : inst->src[i].type;
+-               acp_entry *entry = rzalloc(copy_prop_ctx, acp_entry);
+-               entry->dst = byte_offset(retype(inst->dst, t), offset);
+-               entry->src = retype(inst->src[i], t);
+-               entry->size_written = size_written;
+-               entry->size_read = inst->size_read(i);
+-               entry->opcode = inst->opcode;
+-               entry->force_writemask_all = inst->force_writemask_all;
+-               if (!entry->dst.equals(inst->src[i])) {
++               fs_reg dst = byte_offset(retype(inst->dst, t), offset);
++               if (!dst.equals(inst->src[i])) {
++                  acp_entry *entry = rzalloc(copy_prop_ctx, acp_entry);
++                  entry->dst = dst;
++                  entry->src = retype(inst->src[i], t);
++                  entry->size_written = size_written;
++                  entry->size_read = inst->size_read(i);
++                  entry->opcode = inst->opcode;
++                  entry->force_writemask_all = inst->force_writemask_all;
+                   acp.add(entry);
+-               } else {
+-                  ralloc_free(entry);
+                }
+             }
+             offset += size_written;
+-- 
+GitLab
+
+
+From 72899304a698a95a102e6385f27b72e833f8bec1 Mon Sep 17 00:00:00 2001
+From: Caio Oliveira <caio.oliveira@intel.com>
+Date: Mon, 2 Oct 2023 10:39:09 -0700
+Subject: [PATCH 2/5] intel/fs: Use linear allocator in opt_copy_propagation
+
+---
+ .../compiler/brw_fs_copy_propagation.cpp      | 45 ++++++++++---------
+ 1 file changed, 24 insertions(+), 21 deletions(-)
+
+diff --git a/src/intel/compiler/brw_fs_copy_propagation.cpp b/src/intel/compiler/brw_fs_copy_propagation.cpp
+index aafb47bbcf90e..d54d27bd94b54 100644
+--- a/src/intel/compiler/brw_fs_copy_propagation.cpp
++++ b/src/intel/compiler/brw_fs_copy_propagation.cpp
+@@ -265,7 +265,7 @@ struct block_data {
+ class fs_copy_prop_dataflow
+ {
+ public:
+-   fs_copy_prop_dataflow(void *mem_ctx, cfg_t *cfg,
++   fs_copy_prop_dataflow(linear_ctx *lin_ctx, cfg_t *cfg,
+                          const fs_live_variables &live,
+                          struct acp *out_acp);
+ 
+@@ -274,7 +274,6 @@ public:
+ 
+    void dump_block_data() const UNUSED;
+ 
+-   void *mem_ctx;
+    cfg_t *cfg;
+    const fs_live_variables &live;
+ 
+@@ -286,31 +285,33 @@ public:
+ };
+ } /* anonymous namespace */
+ 
+-fs_copy_prop_dataflow::fs_copy_prop_dataflow(void *mem_ctx, cfg_t *cfg,
++fs_copy_prop_dataflow::fs_copy_prop_dataflow(linear_ctx *lin_ctx, cfg_t *cfg,
+                                              const fs_live_variables &live,
+                                              struct acp *out_acp)
+-   : mem_ctx(mem_ctx), cfg(cfg), live(live)
++   : cfg(cfg), live(live)
+ {
+-   bd = rzalloc_array(mem_ctx, struct block_data, cfg->num_blocks);
++   bd = linear_zalloc_array(lin_ctx, struct block_data, cfg->num_blocks);
+ 
+    num_acp = 0;
+    foreach_block (block, cfg)
+       num_acp += out_acp[block->num].length();
+ 
+-   acp = rzalloc_array(mem_ctx, struct acp_entry *, num_acp);
+-
+    bitset_words = BITSET_WORDS(num_acp);
+ 
+-   int next_acp = 0;
+    foreach_block (block, cfg) {
+-      bd[block->num].livein = rzalloc_array(bd, BITSET_WORD, bitset_words);
+-      bd[block->num].liveout = rzalloc_array(bd, BITSET_WORD, bitset_words);
+-      bd[block->num].copy = rzalloc_array(bd, BITSET_WORD, bitset_words);
+-      bd[block->num].kill = rzalloc_array(bd, BITSET_WORD, bitset_words);
+-      bd[block->num].undef = rzalloc_array(bd, BITSET_WORD, bitset_words);
+-      bd[block->num].reachin = rzalloc_array(bd, BITSET_WORD, bitset_words);
+-      bd[block->num].exec_mismatch = rzalloc_array(bd, BITSET_WORD, bitset_words);
++      bd[block->num].livein = linear_zalloc_array(lin_ctx, BITSET_WORD, bitset_words);
++      bd[block->num].liveout = linear_zalloc_array(lin_ctx, BITSET_WORD, bitset_words);
++      bd[block->num].copy = linear_zalloc_array(lin_ctx, BITSET_WORD, bitset_words);
++      bd[block->num].kill = linear_zalloc_array(lin_ctx, BITSET_WORD, bitset_words);
++      bd[block->num].undef = linear_zalloc_array(lin_ctx, BITSET_WORD, bitset_words);
++      bd[block->num].reachin = linear_zalloc_array(lin_ctx, BITSET_WORD, bitset_words);
++      bd[block->num].exec_mismatch = linear_zalloc_array(lin_ctx, BITSET_WORD, bitset_words);
++   }
++
++   acp = linear_zalloc_array(lin_ctx, struct acp_entry *, num_acp);
+ 
++   int next_acp = 0;
++   foreach_block (block, cfg) {
+       for (auto iter = out_acp[block->num].begin();
+            iter != out_acp[block->num].end(); ++iter) {
+          acp[next_acp] = *iter;
+@@ -1262,7 +1263,7 @@ can_propagate_from(fs_inst *inst)
+  * list.
+  */
+ static bool
+-opt_copy_propagation_local(const brw_compiler *compiler, void *copy_prop_ctx,
++opt_copy_propagation_local(const brw_compiler *compiler, linear_ctx *lin_ctx,
+                            bblock_t *block, struct acp &acp,
+                            const brw::simple_allocator &alloc)
+ {
+@@ -1342,7 +1343,7 @@ opt_copy_propagation_local(const brw_compiler *compiler, void *copy_prop_ctx,
+        * operand of another instruction, add it to the ACP.
+        */
+       if (can_propagate_from(inst)) {
+-         acp_entry *entry = rzalloc(copy_prop_ctx, acp_entry);
++         acp_entry *entry = linear_zalloc(lin_ctx, acp_entry);
+          entry->dst = inst->dst;
+          entry->src = inst->src[0];
+          entry->size_written = inst->size_written;
+@@ -1366,7 +1367,7 @@ opt_copy_propagation_local(const brw_compiler *compiler, void *copy_prop_ctx,
+                   BRW_REGISTER_TYPE_UD : inst->src[i].type;
+                fs_reg dst = byte_offset(retype(inst->dst, t), offset);
+                if (!dst.equals(inst->src[i])) {
+-                  acp_entry *entry = rzalloc(copy_prop_ctx, acp_entry);
++                  acp_entry *entry = linear_zalloc(lin_ctx, acp_entry);
+                   entry->dst = dst;
+                   entry->src = retype(inst->src[i], t);
+                   entry->size_written = size_written;
+@@ -1389,15 +1390,17 @@ fs_visitor::opt_copy_propagation()
+ {
+    bool progress = false;
+    void *copy_prop_ctx = ralloc_context(NULL);
++   linear_ctx *lin_ctx = linear_context(copy_prop_ctx);
+    struct acp out_acp[cfg->num_blocks];
+ 
+    const fs_live_variables &live = live_analysis.require();
+ 
++
+    /* First, walk through each block doing local copy propagation and getting
+     * the set of copies available at the end of the block.
+     */
+    foreach_block (block, cfg) {
+-      progress = opt_copy_propagation_local(compiler, copy_prop_ctx, block,
++      progress = opt_copy_propagation_local(compiler, lin_ctx, block,
+                                             out_acp[block->num], alloc) || progress;
+ 
+       /* If the destination of an ACP entry exists only within this block,
+@@ -1421,7 +1424,7 @@ fs_visitor::opt_copy_propagation()
+    }
+ 
+    /* Do dataflow analysis for those available copies. */
+-   fs_copy_prop_dataflow dataflow(copy_prop_ctx, cfg, live, out_acp);
++   fs_copy_prop_dataflow dataflow(lin_ctx, cfg, live, out_acp);
+ 
+    /* Next, re-run local copy propagation, this time with the set of copies
+     * provided by the dataflow analysis available at the start of a block.
+@@ -1437,7 +1440,7 @@ fs_visitor::opt_copy_propagation()
+          }
+       }
+ 
+-      progress = opt_copy_propagation_local(compiler, copy_prop_ctx, block, in_acp, alloc) ||
++      progress = opt_copy_propagation_local(compiler, lin_ctx, block, in_acp, alloc) ||
+                  progress;
+    }
+ 
+-- 
+GitLab
+
+
+From 9eacb04ee73d921b3a891211de962b4bba80c6ce Mon Sep 17 00:00:00 2001
+From: Caio Oliveira <caio.oliveira@intel.com>
+Date: Mon, 2 Oct 2023 13:04:19 -0700
+Subject: [PATCH 3/5] intel/fs: Use linear allocator in fs_live_variables
+
+---
+ src/intel/compiler/brw_fs_live_variables.cpp | 21 ++++++++++----------
+ 1 file changed, 11 insertions(+), 10 deletions(-)
+
+diff --git a/src/intel/compiler/brw_fs_live_variables.cpp b/src/intel/compiler/brw_fs_live_variables.cpp
+index 62037d75bb87e..c6361d67d9554 100644
+--- a/src/intel/compiler/brw_fs_live_variables.cpp
++++ b/src/intel/compiler/brw_fs_live_variables.cpp
+@@ -250,16 +250,17 @@ fs_live_variables::fs_live_variables(const backend_shader *s)
+    : devinfo(s->devinfo), cfg(s->cfg)
+ {
+    mem_ctx = ralloc_context(NULL);
++   linear_ctx *lin_ctx = linear_context(mem_ctx);
+ 
+    num_vgrfs = s->alloc.count;
+    num_vars = 0;
+-   var_from_vgrf = rzalloc_array(mem_ctx, int, num_vgrfs);
++   var_from_vgrf = linear_zalloc_array(lin_ctx, int, num_vgrfs);
+    for (int i = 0; i < num_vgrfs; i++) {
+       var_from_vgrf[i] = num_vars;
+       num_vars += s->alloc.sizes[i];
+    }
+ 
+-   vgrf_from_var = rzalloc_array(mem_ctx, int, num_vars);
++   vgrf_from_var = linear_zalloc_array(lin_ctx, int, num_vars);
+    for (int i = 0; i < num_vgrfs; i++) {
+       for (unsigned j = 0; j < s->alloc.sizes[i]; j++) {
+          vgrf_from_var[var_from_vgrf[i] + j] = i;
+@@ -267,7 +268,7 @@ fs_live_variables::fs_live_variables(const backend_shader *s)
+    }
+ 
+    start = ralloc_array(mem_ctx, int, num_vars);
+-   end = rzalloc_array(mem_ctx, int, num_vars);
++   end = linear_zalloc_array(lin_ctx, int, num_vars);
+    for (int i = 0; i < num_vars; i++) {
+       start[i] = MAX_INSTRUCTION;
+       end[i] = -1;
+@@ -280,16 +281,16 @@ fs_live_variables::fs_live_variables(const backend_shader *s)
+       vgrf_end[i] = -1;
+    }
+ 
+-   block_data = rzalloc_array(mem_ctx, struct block_data, cfg->num_blocks);
++   block_data = linear_zalloc_array(lin_ctx, struct block_data, cfg->num_blocks);
+ 
+    bitset_words = BITSET_WORDS(num_vars);
+    for (int i = 0; i < cfg->num_blocks; i++) {
+-      block_data[i].def = rzalloc_array(mem_ctx, BITSET_WORD, bitset_words);
+-      block_data[i].use = rzalloc_array(mem_ctx, BITSET_WORD, bitset_words);
+-      block_data[i].livein = rzalloc_array(mem_ctx, BITSET_WORD, bitset_words);
+-      block_data[i].liveout = rzalloc_array(mem_ctx, BITSET_WORD, bitset_words);
+-      block_data[i].defin = rzalloc_array(mem_ctx, BITSET_WORD, bitset_words);
+-      block_data[i].defout = rzalloc_array(mem_ctx, BITSET_WORD, bitset_words);
++      block_data[i].def = linear_zalloc_array(lin_ctx, BITSET_WORD, bitset_words);
++      block_data[i].use = linear_zalloc_array(lin_ctx, BITSET_WORD, bitset_words);
++      block_data[i].livein = linear_zalloc_array(lin_ctx, BITSET_WORD, bitset_words);
++      block_data[i].liveout = linear_zalloc_array(lin_ctx, BITSET_WORD, bitset_words);
++      block_data[i].defin = linear_zalloc_array(lin_ctx, BITSET_WORD, bitset_words);
++      block_data[i].defout = linear_zalloc_array(lin_ctx, BITSET_WORD, bitset_words);
+ 
+       block_data[i].flag_def[0] = 0;
+       block_data[i].flag_use[0] = 0;
+-- 
+GitLab
+
+
+From fa7d0078a26d6ec0675f04873f9cd4f1b7866808 Mon Sep 17 00:00:00 2001
+From: Caio Oliveira <caio.oliveira@intel.com>
+Date: Tue, 10 Oct 2023 15:24:38 -0700
+Subject: [PATCH 4/5] intel/compiler: Use linear allocator in parts of
+ brw_schedule_instructions
+
+---
+ .../compiler/brw_schedule_instructions.cpp    | 24 ++++++++++---------
+ 1 file changed, 13 insertions(+), 11 deletions(-)
+
+diff --git a/src/intel/compiler/brw_schedule_instructions.cpp b/src/intel/compiler/brw_schedule_instructions.cpp
+index ac85137a6a85c..33d13f3fde58b 100644
+--- a/src/intel/compiler/brw_schedule_instructions.cpp
++++ b/src/intel/compiler/brw_schedule_instructions.cpp
+@@ -613,6 +613,7 @@ public:
+       bs(s)
+    {
+       this->mem_ctx = ralloc_context(NULL);
++      this->lin_ctx = linear_context(this->mem_ctx);
+       this->grf_count = grf_count;
+       this->hw_reg_count = hw_reg_count;
+       this->instructions.make_empty();
+@@ -620,30 +621,30 @@ public:
+       this->mode = mode;
+       this->reg_pressure = 0;
+       this->block_idx = 0;
+-      this->last_grf_write = rzalloc_array(this->mem_ctx, schedule_node *, grf_count * grf_write_scale);
++      this->last_grf_write = linear_zalloc_array(lin_ctx, schedule_node *, grf_count * grf_write_scale);
+       if (!post_reg_alloc) {
+-         this->reg_pressure_in = rzalloc_array(mem_ctx, int, block_count);
++         this->reg_pressure_in = linear_zalloc_array(lin_ctx, int, block_count);
+ 
+-         this->livein = ralloc_array(mem_ctx, BITSET_WORD *, block_count);
++         this->livein = linear_alloc_array(lin_ctx, BITSET_WORD *, block_count);
+          for (int i = 0; i < block_count; i++)
+-            this->livein[i] = rzalloc_array(mem_ctx, BITSET_WORD,
++            this->livein[i] = linear_zalloc_array(lin_ctx, BITSET_WORD,
+                                             BITSET_WORDS(grf_count));
+ 
+-         this->liveout = ralloc_array(mem_ctx, BITSET_WORD *, block_count);
++         this->liveout = linear_alloc_array(lin_ctx, BITSET_WORD *, block_count);
+          for (int i = 0; i < block_count; i++)
+-            this->liveout[i] = rzalloc_array(mem_ctx, BITSET_WORD,
++            this->liveout[i] = linear_zalloc_array(lin_ctx, BITSET_WORD,
+                                              BITSET_WORDS(grf_count));
+ 
+-         this->hw_liveout = ralloc_array(mem_ctx, BITSET_WORD *, block_count);
++         this->hw_liveout = linear_alloc_array(lin_ctx, BITSET_WORD *, block_count);
+          for (int i = 0; i < block_count; i++)
+-            this->hw_liveout[i] = rzalloc_array(mem_ctx, BITSET_WORD,
++            this->hw_liveout[i] = linear_zalloc_array(lin_ctx, BITSET_WORD,
+                                                 BITSET_WORDS(hw_reg_count));
+ 
+-         this->written = rzalloc_array(mem_ctx, bool, grf_count);
++         this->written = linear_zalloc_array(lin_ctx, bool, grf_count);
+ 
+-         this->reads_remaining = rzalloc_array(mem_ctx, int, grf_count);
++         this->reads_remaining = linear_zalloc_array(lin_ctx, int, grf_count);
+ 
+-         this->hw_reads_remaining = rzalloc_array(mem_ctx, int, hw_reg_count);
++         this->hw_reads_remaining = linear_zalloc_array(lin_ctx, int, hw_reg_count);
+       } else {
+          this->reg_pressure_in = NULL;
+          this->livein = NULL;
+@@ -688,6 +689,7 @@ public:
+    void schedule_instructions(bblock_t *block);
+ 
+    void *mem_ctx;
++   linear_ctx *lin_ctx;
+ 
+    bool post_reg_alloc;
+    int grf_count;
+-- 
+GitLab
+
+
+From 4c34b65cb7595c3ffc4cae367a10ca720d071527 Mon Sep 17 00:00:00 2001
+From: Caio Oliveira <caio.oliveira@intel.com>
+Date: Mon, 9 Oct 2023 14:41:46 -0700
+Subject: [PATCH 5/5] intel/compiler: Remove reference to brw_isa_info from
+ schedule_node
+
+It is always the same for all nodes, so use the one available in the
+scheduler itself.
+---
+ src/intel/compiler/brw_schedule_instructions.cpp | 9 ++++-----
+ 1 file changed, 4 insertions(+), 5 deletions(-)
+
+diff --git a/src/intel/compiler/brw_schedule_instructions.cpp b/src/intel/compiler/brw_schedule_instructions.cpp
+index 33d13f3fde58b..5af45b05d7b30 100644
+--- a/src/intel/compiler/brw_schedule_instructions.cpp
++++ b/src/intel/compiler/brw_schedule_instructions.cpp
+@@ -65,9 +65,8 @@ class schedule_node : public exec_node
+ public:
+    schedule_node(backend_instruction *inst, instruction_scheduler *sched);
+    void set_latency_gfx4();
+-   void set_latency_gfx7(bool is_haswell);
++   void set_latency_gfx7(const struct brw_isa_info *isa, bool is_haswell);
+ 
+-   const struct brw_isa_info *isa;
+    backend_instruction *inst;
+    schedule_node **children;
+    int *child_latency;
+@@ -155,7 +154,7 @@ schedule_node::set_latency_gfx4()
+ }
+ 
+ void
+-schedule_node::set_latency_gfx7(bool is_haswell)
++schedule_node::set_latency_gfx7(const struct brw_isa_info *isa, bool is_haswell)
+ {
+    switch (inst->opcode) {
+    case BRW_OPCODE_MAD:
+@@ -979,8 +978,8 @@ schedule_node::schedule_node(backend_instruction *inst,
+                              instruction_scheduler *sched)
+ {
+    const struct intel_device_info *devinfo = sched->bs->devinfo;
++   const struct brw_isa_info *isa = &sched->bs->compiler->isa;
+ 
+-   this->isa = &sched->bs->compiler->isa;
+    this->inst = inst;
+    this->child_array_size = 0;
+    this->children = NULL;
+@@ -998,7 +997,7 @@ schedule_node::schedule_node(backend_instruction *inst,
+    if (!sched->post_reg_alloc)
+       this->latency = 1;
+    else if (devinfo->ver >= 6)
+-      set_latency_gfx7(devinfo->verx10 == 75);
++      set_latency_gfx7(isa, devinfo->verx10 == 75);
+    else
+       set_latency_gfx4();
+ }
+-- 
+GitLab
+
