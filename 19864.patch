@@ -1,0 +1,1605 @@
+From 500c9844e9ee4d62ccf19f075447a9bf3006641c Mon Sep 17 00:00:00 2001
+From: Caio Oliveira <caio.oliveira@intel.com>
+Date: Fri, 18 Nov 2022 17:42:34 -0800
+Subject: [PATCH 1/3] intel/compiler: Reserve more bits to brw_reg::swizzle
+
+This is a preparation to use existing MAKE_SWIZZLE4 and SWIZZLE_* macros
+instead of the BRW variants.
+
+Reviewed-by: Kenneth Graunke <kenneth@whitecape.org>
+---
+ src/intel/compiler/brw_reg.h | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/src/intel/compiler/brw_reg.h b/src/intel/compiler/brw_reg.h
+index 97869f65d9613..b7dfafa8242c3 100644
+--- a/src/intel/compiler/brw_reg.h
++++ b/src/intel/compiler/brw_reg.h
+@@ -221,7 +221,8 @@ struct brw_reg {
+          unsigned negate:1;             /* source only */
+          unsigned abs:1;                /* source only */
+          unsigned address_mode:1;       /* relative addressing, hopefully! */
+-         unsigned pad0:17;
++         unsigned swizzle:12;           /* src only, align16 only */
++         unsigned pad0:5;
+          unsigned subnr:5;              /* :1 in align16 */
+       };
+       uint32_t bits;
+@@ -230,13 +231,12 @@ struct brw_reg {
+    union {
+       struct {
+          unsigned nr;
+-         unsigned swizzle:8;      /* src only, align16 only */
+          unsigned writemask:4;    /* dest only, align16 only */
+          int  indirect_offset:10; /* relative addressing offset */
+          unsigned vstride:4;      /* source only */
+          unsigned width:3;        /* src only, align1 only */
+          unsigned hstride:2;      /* align1 only */
+-         unsigned pad1:1;
++         unsigned pad1:9;
+       };
+ 
+       double df;
+-- 
+GitLab
+
+
+From fb9f55655788d4333af222fd65db46316ff5aac1 Mon Sep 17 00:00:00 2001
+From: Caio Oliveira <caio.oliveira@intel.com>
+Date: Fri, 18 Nov 2022 19:23:50 -0800
+Subject: [PATCH 2/3] intel/compiler: Reuse MAKE_SWIZZLE4 for BRW_SWIZZLE4
+
+And adapt the extra macros to use 3 bits instead of 2.
+
+Reviewed-by: Kenneth Graunke <kenneth@whitecape.org>
+---
+ src/intel/compiler/brw_reg.h | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/src/intel/compiler/brw_reg.h b/src/intel/compiler/brw_reg.h
+index b7dfafa8242c3..1d0642a01901f 100644
+--- a/src/intel/compiler/brw_reg.h
++++ b/src/intel/compiler/brw_reg.h
+@@ -72,8 +72,8 @@ struct intel_device_info;
+ /** Number of message register file registers */
+ #define BRW_MAX_MRF(gen) (gen == 6 ? 24 : 16)
+ 
+-#define BRW_SWIZZLE4(a,b,c,d) (((a)<<0) | ((b)<<2) | ((c)<<4) | ((d)<<6))
+-#define BRW_GET_SWZ(swz, idx) (((swz) >> ((idx)*2)) & 0x3)
++#define BRW_SWIZZLE4(a,b,c,d) MAKE_SWIZZLE4((a),(b),(c),(d))
++#define BRW_GET_SWZ(swz, idx) GET_SWZ((swz), (idx))
+ 
+ #define BRW_SWIZZLE_NOOP      BRW_SWIZZLE4(0,1,2,3)
+ #define BRW_SWIZZLE_XYZW      BRW_SWIZZLE4(0,1,2,3)
+@@ -94,8 +94,8 @@ struct intel_device_info;
+ #define BRW_SWIZZLE_YYWW      BRW_SWIZZLE4(1,1,3,3)
+ #define BRW_SWIZZLE_YXWZ      BRW_SWIZZLE4(1,0,3,2)
+ 
+-#define BRW_SWZ_COMP_INPUT(comp) (BRW_SWIZZLE_XYZW >> ((comp)*2))
+-#define BRW_SWZ_COMP_OUTPUT(comp) (BRW_SWIZZLE_XYZW << ((comp)*2))
++#define BRW_SWZ_COMP_INPUT(comp) (BRW_SWIZZLE_XYZW >> ((comp)*3))
++#define BRW_SWZ_COMP_OUTPUT(comp) (BRW_SWIZZLE_XYZW << ((comp)*3))
+ 
+ static inline bool
+ brw_is_single_value_swizzle(unsigned swiz)
+-- 
+GitLab
+
+
+From 5922b7f0959fdfc98e7a3de72577cec61fee73b1 Mon Sep 17 00:00:00 2001
+From: Caio Oliveira <caio.oliveira@intel.com>
+Date: Fri, 18 Nov 2022 19:24:56 -0800
+Subject: [PATCH 3/3] intel/compiler: Drop BRW_SWIZZLE family of macros
+
+Reuse the ones from Mesa directly.
+
+Reviewed-by: Kenneth Graunke <kenneth@whitecape.org>
+---
+ src/gallium/drivers/crocus/crocus_program.c   |  8 +-
+ src/intel/compiler/brw_clip_unfilled.c        |  8 +-
+ src/intel/compiler/brw_clip_util.c            | 12 +--
+ src/intel/compiler/brw_compile_ff_gs.c        |  2 +-
+ src/intel/compiler/brw_disasm.c               | 12 +--
+ src/intel/compiler/brw_eu.c                   |  2 +-
+ src/intel/compiler/brw_eu_emit.c              | 32 ++++----
+ src/intel/compiler/brw_fs.cpp                 | 28 +++----
+ .../compiler/brw_fs_copy_propagation.cpp      |  2 +-
+ src/intel/compiler/brw_fs_generator.cpp       | 36 ++++-----
+ src/intel/compiler/brw_fs_nir.cpp             |  6 +-
+ src/intel/compiler/brw_reg.h                  | 79 ++++++++-----------
+ src/intel/compiler/brw_vec4.cpp               | 62 +++++++--------
+ .../compiler/brw_vec4_cmod_propagation.cpp    | 30 +++----
+ .../compiler/brw_vec4_copy_propagation.cpp    | 12 +--
+ src/intel/compiler/brw_vec4_generator.cpp     | 22 +++---
+ src/intel/compiler/brw_vec4_live_variables.h  |  2 +-
+ src/intel/compiler/brw_vec4_nir.cpp           | 34 ++++----
+ src/intel/compiler/brw_vec4_reg_allocate.cpp  |  2 +-
+ .../compiler/brw_vec4_surface_builder.cpp     |  4 +-
+ src/intel/compiler/brw_vec4_tcs.cpp           |  6 +-
+ src/intel/compiler/brw_vec4_tes.cpp           |  6 +-
+ src/intel/compiler/brw_vec4_visitor.cpp       | 16 ++--
+ .../compiler/test_vec4_cmod_propagation.cpp   | 14 ++--
+ .../compiler/test_vec4_copy_propagation.cpp   | 12 +--
+ .../test_vec4_dead_code_eliminate.cpp         |  6 +-
+ .../compiler/test_vec4_register_coalesce.cpp  |  4 +-
+ src/intel/tools/i965_gram.y                   | 12 +--
+ 28 files changed, 231 insertions(+), 240 deletions(-)
+
+diff --git a/src/gallium/drivers/crocus/crocus_program.c b/src/gallium/drivers/crocus/crocus_program.c
+index 404c42b7bd12a..8f91b20e761ad 100644
+--- a/src/gallium/drivers/crocus/crocus_program.c
++++ b/src/gallium/drivers/crocus/crocus_program.c
+@@ -101,10 +101,10 @@ gfx6_gather_workaround(enum pipe_format pformat)
+ }
+ 
+ static const unsigned crocus_gfx6_swizzle_for_offset[4] = {
+-   BRW_SWIZZLE4(0, 1, 2, 3),
+-   BRW_SWIZZLE4(1, 2, 3, 3),
+-   BRW_SWIZZLE4(2, 3, 3, 3),
+-   BRW_SWIZZLE4(3, 3, 3, 3)
++   MAKE_SWIZZLE4(0, 1, 2, 3),
++   MAKE_SWIZZLE4(1, 2, 3, 3),
++   MAKE_SWIZZLE4(2, 3, 3, 3),
++   MAKE_SWIZZLE4(3, 3, 3, 3)
+ };
+ 
+ static void
+diff --git a/src/intel/compiler/brw_clip_unfilled.c b/src/intel/compiler/brw_clip_unfilled.c
+index 081e086d36f71..7074988cb80d1 100644
+--- a/src/intel/compiler/brw_clip_unfilled.c
++++ b/src/intel/compiler/brw_clip_unfilled.c
+@@ -80,10 +80,10 @@ static void compute_tri_direction( struct brw_clip_compile *c )
+    /* Take their crossproduct:
+     */
+    brw_set_default_access_mode(p, BRW_ALIGN_16);
+-   brw_MUL(p, vec4(brw_null_reg()), brw_swizzle(e, BRW_SWIZZLE_YZXW),
+-           brw_swizzle(f, BRW_SWIZZLE_ZXYW));
+-   brw_MAC(p, vec4(e),  negate(brw_swizzle(e, BRW_SWIZZLE_ZXYW)),
+-           brw_swizzle(f, BRW_SWIZZLE_YZXW));
++   brw_MUL(p, vec4(brw_null_reg()), brw_swizzle(e, SWIZZLE_YZXW),
++           brw_swizzle(f, SWIZZLE_ZXYW));
++   brw_MAC(p, vec4(e),  negate(brw_swizzle(e, SWIZZLE_ZXYW)),
++           brw_swizzle(f, SWIZZLE_YZXW));
+    brw_set_default_access_mode(p, BRW_ALIGN_1);
+ 
+    brw_MUL(p, c->reg.dir, c->reg.dir, vec4(e));
+diff --git a/src/intel/compiler/brw_clip_util.c b/src/intel/compiler/brw_clip_util.c
+index 32c7000693329..e2815d0443e2d 100644
+--- a/src/intel/compiler/brw_clip_util.c
++++ b/src/intel/compiler/brw_clip_util.c
+@@ -92,7 +92,7 @@ void brw_clip_project_position(struct brw_clip_compile *c, struct brw_reg pos )
+     */
+    brw_set_default_access_mode(p, BRW_ALIGN_16);
+    brw_MUL(p, brw_writemask(pos, WRITEMASK_XYZ), pos,
+-           brw_swizzle(pos, BRW_SWIZZLE_WWWW));
++           brw_swizzle(pos, SWIZZLE_WWWW));
+    brw_set_default_access_mode(p, BRW_ALIGN_1);
+ }
+ 
+@@ -188,11 +188,11 @@ void brw_clip_interp_vertex( struct brw_clip_compile *c,
+       brw_set_default_access_mode(p, BRW_ALIGN_16);
+       brw_MOV(p,
+               brw_writemask(t_nopersp, WRITEMASK_ZW),
+-              brw_swizzle(tmp, BRW_SWIZZLE_XYXY));
++              brw_swizzle(tmp, SWIZZLE_XYXY));
+ 
+       /* t_nopersp = vec4(v1.xy, dest.xy) - v0.xyxy */
+       brw_ADD(p, t_nopersp, t_nopersp,
+-              negate(brw_swizzle(v0_ndc_copy, BRW_SWIZZLE_XYXY)));
++              negate(brw_swizzle(v0_ndc_copy, SWIZZLE_XYXY)));
+ 
+       /* Add the absolute values of the X and Y deltas so that if
+        * the points aren't in the same place on the screen we get
+@@ -206,8 +206,8 @@ void brw_clip_interp_vertex( struct brw_clip_compile *c,
+        */
+       brw_ADD(p,
+               brw_writemask(t_nopersp, WRITEMASK_XY),
+-              brw_abs(brw_swizzle(t_nopersp, BRW_SWIZZLE_XZXZ)),
+-              brw_abs(brw_swizzle(t_nopersp, BRW_SWIZZLE_YWYW)));
++              brw_abs(brw_swizzle(t_nopersp, SWIZZLE_XZXZ)),
++              brw_abs(brw_swizzle(t_nopersp, SWIZZLE_YWYW)));
+       brw_set_default_access_mode(p, BRW_ALIGN_1);
+ 
+       /* If the points are in the same place, just substitute a
+@@ -228,7 +228,7 @@ void brw_clip_interp_vertex( struct brw_clip_compile *c,
+       brw_MUL(p, vec1(t_nopersp), vec1(t_nopersp),
+             vec1(suboffset(t_nopersp, 1)));
+       brw_set_default_access_mode(p, BRW_ALIGN_16);
+-      brw_MOV(p, t_nopersp, brw_swizzle(t_nopersp, BRW_SWIZZLE_XXXX));
++      brw_MOV(p, t_nopersp, brw_swizzle(t_nopersp, SWIZZLE_XXXX));
+       brw_set_default_access_mode(p, BRW_ALIGN_1);
+ 
+       release_tmp(c, tmp);
+diff --git a/src/intel/compiler/brw_compile_ff_gs.c b/src/intel/compiler/brw_compile_ff_gs.c
+index 57c63f355761c..f2f0acba1fb9d 100644
+--- a/src/intel/compiler/brw_compile_ff_gs.c
++++ b/src/intel/compiler/brw_compile_ff_gs.c
+@@ -469,7 +469,7 @@ gfx6_sol_program(struct brw_ff_gs_compile *c, const struct brw_ff_gs_prog_key *k
+             vertex_slot.subnr = (slot % 2) * 16;
+             /* gl_PointSize is stored in VARYING_SLOT_PSIZ.w. */
+             vertex_slot.swizzle = varying == VARYING_SLOT_PSIZ
+-               ? BRW_SWIZZLE_WWWW : key->transform_feedback_swizzles[binding];
++               ? SWIZZLE_WWWW : key->transform_feedback_swizzles[binding];
+             brw_set_default_access_mode(p, BRW_ALIGN_16);
+             brw_push_insn_state(p);
+             brw_set_default_exec_size(p, BRW_EXECUTE_4);
+diff --git a/src/intel/compiler/brw_disasm.c b/src/intel/compiler/brw_disasm.c
+index 53cbf6d60eb0b..8226314370868 100644
+--- a/src/intel/compiler/brw_disasm.c
++++ b/src/intel/compiler/brw_disasm.c
+@@ -1099,16 +1099,16 @@ src_ia1(FILE *file,
+ static int
+ src_swizzle(FILE *file, unsigned swiz)
+ {
+-   unsigned x = BRW_GET_SWZ(swiz, BRW_CHANNEL_X);
+-   unsigned y = BRW_GET_SWZ(swiz, BRW_CHANNEL_Y);
+-   unsigned z = BRW_GET_SWZ(swiz, BRW_CHANNEL_Z);
+-   unsigned w = BRW_GET_SWZ(swiz, BRW_CHANNEL_W);
++   unsigned x = GET_SWZ(swiz, BRW_CHANNEL_X);
++   unsigned y = GET_SWZ(swiz, BRW_CHANNEL_Y);
++   unsigned z = GET_SWZ(swiz, BRW_CHANNEL_Z);
++   unsigned w = GET_SWZ(swiz, BRW_CHANNEL_W);
+    int err = 0;
+ 
+    if (x == y && x == z && x == w) {
+       string(file, ".");
+       err |= control(file, "channel select", chan_sel, x, NULL);
+-   } else if (swiz != BRW_SWIZZLE_XYZW) {
++   } else if (swiz != SWIZZLE_XYZW) {
+       string(file, ".");
+       err |= control(file, "channel select", chan_sel, x, NULL);
+       err |= control(file, "channel select", chan_sel, y, NULL);
+@@ -1153,7 +1153,7 @@ src_da16(FILE *file,
+    string(file, "<");
+    err |= control(file, "vert stride", vert_stride, _vert_stride, NULL);
+    string(file, ">");
+-   err |= src_swizzle(file, BRW_SWIZZLE4(swz_x, swz_y, swz_z, swz_w));
++   err |= src_swizzle(file, MAKE_SWIZZLE4(swz_x, swz_y, swz_z, swz_w));
+    string(file, brw_reg_type_to_letters(type));
+    return err;
+ }
+diff --git a/src/intel/compiler/brw_eu.c b/src/intel/compiler/brw_eu.c
+index 597c316d752b5..1b88bab6a11c1 100644
+--- a/src/intel/compiler/brw_eu.c
++++ b/src/intel/compiler/brw_eu.c
+@@ -118,7 +118,7 @@ brw_swizzle_immediate(enum brw_reg_type type, uint32_t x, unsigned swz)
+          /* Shift the specified component all the way to the right and left to
+           * discard any undesired L/MSBs, then shift it right into component i.
+           */
+-         y |= x >> imm_shift(type, (i & ~3) + BRW_GET_SWZ(swz, i & 3))
++         y |= x >> imm_shift(type, (i & ~3) + GET_SWZ(swz, i & 3))
+                 << imm_shift(type, ~0u)
+                 >> imm_shift(type, ~0u - i);
+       }
+diff --git a/src/intel/compiler/brw_eu_emit.c b/src/intel/compiler/brw_eu_emit.c
+index 5459db37c2c05..e9f11ada0e689 100644
+--- a/src/intel/compiler/brw_eu_emit.c
++++ b/src/intel/compiler/brw_eu_emit.c
+@@ -308,13 +308,13 @@ brw_set_src0(struct brw_codegen *p, brw_inst *inst, struct brw_reg reg)
+             }
+          } else {
+             brw_inst_set_src0_da16_swiz_x(devinfo, inst,
+-               BRW_GET_SWZ(reg.swizzle, BRW_CHANNEL_X));
++               GET_SWZ(reg.swizzle, BRW_CHANNEL_X));
+             brw_inst_set_src0_da16_swiz_y(devinfo, inst,
+-               BRW_GET_SWZ(reg.swizzle, BRW_CHANNEL_Y));
++               GET_SWZ(reg.swizzle, BRW_CHANNEL_Y));
+             brw_inst_set_src0_da16_swiz_z(devinfo, inst,
+-               BRW_GET_SWZ(reg.swizzle, BRW_CHANNEL_Z));
++               GET_SWZ(reg.swizzle, BRW_CHANNEL_Z));
+             brw_inst_set_src0_da16_swiz_w(devinfo, inst,
+-               BRW_GET_SWZ(reg.swizzle, BRW_CHANNEL_W));
++               GET_SWZ(reg.swizzle, BRW_CHANNEL_W));
+ 
+             if (reg.vstride == BRW_VERTICAL_STRIDE_8) {
+                /* This is an oddity of the fact we're using the same
+@@ -415,13 +415,13 @@ brw_set_src1(struct brw_codegen *p, brw_inst *inst, struct brw_reg reg)
+             }
+          } else {
+             brw_inst_set_src1_da16_swiz_x(devinfo, inst,
+-               BRW_GET_SWZ(reg.swizzle, BRW_CHANNEL_X));
++               GET_SWZ(reg.swizzle, BRW_CHANNEL_X));
+             brw_inst_set_src1_da16_swiz_y(devinfo, inst,
+-               BRW_GET_SWZ(reg.swizzle, BRW_CHANNEL_Y));
++               GET_SWZ(reg.swizzle, BRW_CHANNEL_Y));
+             brw_inst_set_src1_da16_swiz_z(devinfo, inst,
+-               BRW_GET_SWZ(reg.swizzle, BRW_CHANNEL_Z));
++               GET_SWZ(reg.swizzle, BRW_CHANNEL_Z));
+             brw_inst_set_src1_da16_swiz_w(devinfo, inst,
+-               BRW_GET_SWZ(reg.swizzle, BRW_CHANNEL_W));
++               GET_SWZ(reg.swizzle, BRW_CHANNEL_W));
+ 
+             if (reg.vstride == BRW_VERTICAL_STRIDE_8) {
+                /* This is an oddity of the fact we're using the same
+@@ -1044,11 +1044,11 @@ brw_inst *brw_##OP(struct brw_codegen *p,		\
+ {                                                       \
+    if (p->current->access_mode == BRW_ALIGN_16) {       \
+       if (src0.vstride == BRW_VERTICAL_STRIDE_0)        \
+-         src0.swizzle = BRW_SWIZZLE_XXXX;               \
++         src0.swizzle = SWIZZLE_XXXX;               \
+       if (src1.vstride == BRW_VERTICAL_STRIDE_0)        \
+-         src1.swizzle = BRW_SWIZZLE_XXXX;               \
++         src1.swizzle = SWIZZLE_XXXX;               \
+       if (src2.vstride == BRW_VERTICAL_STRIDE_0)        \
+-         src2.swizzle = BRW_SWIZZLE_XXXX;               \
++         src2.swizzle = SWIZZLE_XXXX;               \
+    }                                                    \
+    return brw_alu3(p, BRW_OPCODE_##OP, dest, src0, src1, src2);	\
+ }
+@@ -1074,11 +1074,11 @@ brw_inst *brw_##OP(struct brw_codegen *p,         \
+                                                                 \
+    if (p->current->access_mode == BRW_ALIGN_16) {               \
+       if (src0.vstride == BRW_VERTICAL_STRIDE_0)                \
+-         src0.swizzle = BRW_SWIZZLE_XXXX;                       \
++         src0.swizzle = SWIZZLE_XXXX;                       \
+       if (src1.vstride == BRW_VERTICAL_STRIDE_0)                \
+-         src1.swizzle = BRW_SWIZZLE_XXXX;                       \
++         src1.swizzle = SWIZZLE_XXXX;                       \
+       if (src2.vstride == BRW_VERTICAL_STRIDE_0)                \
+-         src2.swizzle = BRW_SWIZZLE_XXXX;                       \
++         src2.swizzle = SWIZZLE_XXXX;                       \
+    }                                                            \
+    return brw_alu3(p, BRW_OPCODE_##OP, dest, src0, src1, src2); \
+ }
+@@ -2888,7 +2888,7 @@ brw_send_indirect_surface_message(struct brw_codegen *p,
+        */
+       brw_AND(p, addr,
+               suboffset(vec1(retype(surface, BRW_REGISTER_TYPE_UD)),
+-                        BRW_GET_SWZ(surface.swizzle, 0)),
++                        GET_SWZ(surface.swizzle, 0)),
+               brw_imm_ud(0xff));
+ 
+       brw_pop_insn_state(p);
+@@ -3584,7 +3584,7 @@ brw_broadcast(struct brw_codegen *p,
+           */
+          inst = brw_MOV(p,
+                         brw_null_reg(),
+-                        stride(brw_swizzle(idx, BRW_SWIZZLE_XXXX), 4, 4, 1));
++                        stride(brw_swizzle(idx, SWIZZLE_XXXX), 4, 4, 1));
+          brw_inst_set_pred_control(devinfo, inst, BRW_PREDICATE_NONE);
+          brw_inst_set_cond_modifier(devinfo, inst, BRW_CONDITIONAL_NZ);
+          brw_inst_set_flag_reg_nr(devinfo, inst, 1);
+diff --git a/src/intel/compiler/brw_fs.cpp b/src/intel/compiler/brw_fs.cpp
+index dbd849685092b..2932519520151 100644
+--- a/src/intel/compiler/brw_fs.cpp
++++ b/src/intel/compiler/brw_fs.cpp
+@@ -366,14 +366,14 @@ fs_inst::has_source_and_destination_hazard() const
+       return true;
+    case SHADER_OPCODE_QUAD_SWIZZLE:
+       switch (src[1].ud) {
+-      case BRW_SWIZZLE_XXXX:
+-      case BRW_SWIZZLE_YYYY:
+-      case BRW_SWIZZLE_ZZZZ:
+-      case BRW_SWIZZLE_WWWW:
+-      case BRW_SWIZZLE_XXZZ:
+-      case BRW_SWIZZLE_YYWW:
+-      case BRW_SWIZZLE_XYXY:
+-      case BRW_SWIZZLE_ZWZW:
++      case SWIZZLE_XXXX:
++      case SWIZZLE_YYYY:
++      case SWIZZLE_ZZZZ:
++      case SWIZZLE_WWWW:
++      case SWIZZLE_XXZZ:
++      case SWIZZLE_YYWW:
++      case SWIZZLE_XYXY:
++      case SWIZZLE_ZWZW:
+          /* These can be implemented as a single Align1 region on all
+           * platforms, so there's never a hazard between source and
+           * destination.  C.f. fs_generator::generate_quad_swizzle().
+@@ -3369,7 +3369,7 @@ fs_visitor::emit_repclear_shader()
+       struct brw_reg reg =
+          brw_reg(BRW_GENERAL_REGISTER_FILE, 2, 3, 0, 0, BRW_REGISTER_TYPE_UD,
+                  BRW_VERTICAL_STRIDE_8, BRW_WIDTH_2, BRW_HORIZONTAL_STRIDE_4,
+-                 BRW_SWIZZLE_XYZW, WRITEMASK_XYZW);
++                 SWIZZLE_XYZW, WRITEMASK_XYZW);
+ 
+       mov = bld.exec_all().group(4, 0)
+                .MOV(brw_uvec_mrf(4, color_mrf, 0), fs_reg(reg));
+@@ -5253,7 +5253,7 @@ get_lowered_simd_width(const struct brw_compiler *compiler,
+       return (is_uniform(inst->src[0]) ?
+                  get_fpu_lowered_simd_width(compiler, inst) :
+               devinfo->ver < 11 && type_sz(inst->src[0].type) == 4 ? 8 :
+-              swiz == BRW_SWIZZLE_XYXY || swiz == BRW_SWIZZLE_ZWZW ? 4 :
++              swiz == SWIZZLE_XYXY || swiz == SWIZZLE_ZWZW ? 4 :
+               get_fpu_lowered_simd_width(compiler, inst));
+    }
+    case SHADER_OPCODE_MOV_INDIRECT: {
+@@ -5689,19 +5689,19 @@ fs_visitor::lower_derivatives()
+    foreach_block_and_inst(block, fs_inst, inst, cfg) {
+       if (inst->opcode == FS_OPCODE_DDX_COARSE)
+          progress |= lower_derivative(this, block, inst,
+-                                      BRW_SWIZZLE_XXXX, BRW_SWIZZLE_YYYY);
++                                      SWIZZLE_XXXX, SWIZZLE_YYYY);
+ 
+       else if (inst->opcode == FS_OPCODE_DDX_FINE)
+          progress |= lower_derivative(this, block, inst,
+-                                      BRW_SWIZZLE_XXZZ, BRW_SWIZZLE_YYWW);
++                                      SWIZZLE_XXZZ, SWIZZLE_YYWW);
+ 
+       else if (inst->opcode == FS_OPCODE_DDY_COARSE)
+          progress |= lower_derivative(this, block, inst,
+-                                      BRW_SWIZZLE_XXXX, BRW_SWIZZLE_ZZZZ);
++                                      SWIZZLE_XXXX, SWIZZLE_ZZZZ);
+ 
+       else if (inst->opcode == FS_OPCODE_DDY_FINE)
+          progress |= lower_derivative(this, block, inst,
+-                                      BRW_SWIZZLE_XYXY, BRW_SWIZZLE_ZWZW);
++                                      SWIZZLE_XYXY, SWIZZLE_ZWZW);
+    }
+ 
+    if (progress)
+diff --git a/src/intel/compiler/brw_fs_copy_propagation.cpp b/src/intel/compiler/brw_fs_copy_propagation.cpp
+index 3f223c92d5c38..e05021b3d0e9b 100644
+--- a/src/intel/compiler/brw_fs_copy_propagation.cpp
++++ b/src/intel/compiler/brw_fs_copy_propagation.cpp
+@@ -693,7 +693,7 @@ fs_visitor::try_copy_propagate(fs_inst *inst, int arg, acp_entry *entry)
+       inst->src[arg].stride = 1;
+ 
+       /* Hopefully no Align16 around here... */
+-      assert(entry->src.swizzle == BRW_SWIZZLE_XYZW);
++      assert(entry->src.swizzle == SWIZZLE_XYZW);
+       inst->src[arg].swizzle = entry->src.swizzle;
+    } else {
+       inst->src[arg].stride *= entry->src.stride;
+diff --git a/src/intel/compiler/brw_fs_generator.cpp b/src/intel/compiler/brw_fs_generator.cpp
+index 1d079d22ee4e9..3b357dce1cf28 100644
+--- a/src/intel/compiler/brw_fs_generator.cpp
++++ b/src/intel/compiler/brw_fs_generator.cpp
+@@ -764,23 +764,23 @@ fs_generator::generate_quad_swizzle(const fs_inst *inst,
+    } else {
+       assert(src.hstride == BRW_HORIZONTAL_STRIDE_1);
+       assert(src.vstride == src.width + 1);
+-      const struct brw_reg src_0 = suboffset(src, BRW_GET_SWZ(swiz, 0));
++      const struct brw_reg src_0 = suboffset(src, GET_SWZ(swiz, 0));
+ 
+       switch (swiz) {
+-      case BRW_SWIZZLE_XXXX:
+-      case BRW_SWIZZLE_YYYY:
+-      case BRW_SWIZZLE_ZZZZ:
+-      case BRW_SWIZZLE_WWWW:
++      case SWIZZLE_XXXX:
++      case SWIZZLE_YYYY:
++      case SWIZZLE_ZZZZ:
++      case SWIZZLE_WWWW:
+          brw_MOV(p, dst, stride(src_0, 4, 4, 0));
+          break;
+ 
+-      case BRW_SWIZZLE_XXZZ:
+-      case BRW_SWIZZLE_YYWW:
++      case SWIZZLE_XXZZ:
++      case SWIZZLE_YYWW:
+          brw_MOV(p, dst, stride(src_0, 2, 2, 0));
+          break;
+ 
+-      case BRW_SWIZZLE_XYXY:
+-      case BRW_SWIZZLE_ZWZW:
++      case SWIZZLE_XYXY:
++      case SWIZZLE_ZWZW:
+          assert(inst->exec_size == 4);
+          brw_MOV(p, dst, stride(src_0, 0, 2, 1));
+          break;
+@@ -793,7 +793,7 @@ fs_generator::generate_quad_swizzle(const fs_inst *inst,
+             brw_inst *insn = brw_MOV(
+                p, stride(suboffset(dst, c),
+                          4 * inst->dst.stride, 1, 4 * inst->dst.stride),
+-               stride(suboffset(src, BRW_GET_SWZ(swiz, c)), 4, 1, 0));
++               stride(suboffset(src, GET_SWZ(swiz, c)), 4, 1, 0));
+ 
+             if (devinfo->ver < 12) {
+                brw_inst_set_no_dd_clear(devinfo, insn, c < 3);
+@@ -1303,11 +1303,11 @@ fs_generator::generate_ddx(const fs_inst *inst,
+       struct brw_reg src0 = stride(src, 4, 4, 1);
+       struct brw_reg src1 = stride(src, 4, 4, 1);
+       if (inst->opcode == FS_OPCODE_DDX_FINE) {
+-         src0.swizzle = BRW_SWIZZLE_XXZZ;
+-         src1.swizzle = BRW_SWIZZLE_YYWW;
++         src0.swizzle = SWIZZLE_XXZZ;
++         src1.swizzle = SWIZZLE_YYWW;
+       } else {
+-         src0.swizzle = BRW_SWIZZLE_XXXX;
+-         src1.swizzle = BRW_SWIZZLE_YYYY;
++         src0.swizzle = SWIZZLE_XXXX;
++         src1.swizzle = SWIZZLE_YYYY;
+       }
+ 
+       brw_push_insn_state(p);
+@@ -1358,8 +1358,8 @@ fs_generator::generate_ddy(const fs_inst *inst,
+       } else {
+          struct brw_reg src0 = stride(src, 4, 4, 1);
+          struct brw_reg src1 = stride(src, 4, 4, 1);
+-         src0.swizzle = BRW_SWIZZLE_XYXY;
+-         src1.swizzle = BRW_SWIZZLE_ZWZW;
++         src0.swizzle = SWIZZLE_XYXY;
++         src1.swizzle = SWIZZLE_ZWZW;
+ 
+          brw_push_insn_state(p);
+          brw_set_default_access_mode(p, BRW_ALIGN_16);
+@@ -1382,8 +1382,8 @@ fs_generator::generate_ddy(const fs_inst *inst,
+           */
+          struct brw_reg src0 = stride(src, 4, 4, 1);
+          struct brw_reg src1 = stride(src, 4, 4, 1);
+-         src0.swizzle = BRW_SWIZZLE_XXXX;
+-         src1.swizzle = BRW_SWIZZLE_ZZZZ;
++         src0.swizzle = SWIZZLE_XXXX;
++         src1.swizzle = SWIZZLE_ZZZZ;
+ 
+          brw_push_insn_state(p);
+          brw_set_default_access_mode(p, BRW_ALIGN_16);
+diff --git a/src/intel/compiler/brw_fs_nir.cpp b/src/intel/compiler/brw_fs_nir.cpp
+index 510da774acfed..98525cb9cbbac 100644
+--- a/src/intel/compiler/brw_fs_nir.cpp
++++ b/src/intel/compiler/brw_fs_nir.cpp
+@@ -5433,7 +5433,7 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
+          assert(nir_src_bit_size(instr->src[0]) == 32);
+          const fs_builder ubld = bld.exec_all();
+          ubld.emit(SHADER_OPCODE_QUAD_SWIZZLE, tmp, value,
+-                   brw_imm_ud(BRW_SWIZZLE4(1,0,3,2)));
++                   brw_imm_ud(MAKE_SWIZZLE4(1,0,3,2)));
+          bld.MOV(retype(dest, value.type), tmp);
+       } else {
+          const fs_builder ubld = bld.exec_all().group(dispatch_width / 2, 0);
+@@ -5458,7 +5458,7 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
+          const fs_reg tmp = bld.vgrf(value.type);
+          const fs_builder ubld = bld.exec_all();
+          ubld.emit(SHADER_OPCODE_QUAD_SWIZZLE, tmp, value,
+-                   brw_imm_ud(BRW_SWIZZLE4(2,3,0,1)));
++                   brw_imm_ud(MAKE_SWIZZLE4(2,3,0,1)));
+          bld.MOV(retype(dest, value.type), tmp);
+       } else {
+          /* For larger data types, we have to either emit dispatch_width many
+@@ -5479,7 +5479,7 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
+          const fs_reg tmp = bld.vgrf(value.type);
+          const fs_builder ubld = bld.exec_all();
+          ubld.emit(SHADER_OPCODE_QUAD_SWIZZLE, tmp, value,
+-                   brw_imm_ud(BRW_SWIZZLE4(3,2,1,0)));
++                   brw_imm_ud(MAKE_SWIZZLE4(3,2,1,0)));
+          bld.MOV(retype(dest, value.type), tmp);
+       } else {
+          /* For larger data types, we have to either emit dispatch_width many
+diff --git a/src/intel/compiler/brw_reg.h b/src/intel/compiler/brw_reg.h
+index 1d0642a01901f..76eb9da5e0007 100644
+--- a/src/intel/compiler/brw_reg.h
++++ b/src/intel/compiler/brw_reg.h
+@@ -72,38 +72,29 @@ struct intel_device_info;
+ /** Number of message register file registers */
+ #define BRW_MAX_MRF(gen) (gen == 6 ? 24 : 16)
+ 
+-#define BRW_SWIZZLE4(a,b,c,d) MAKE_SWIZZLE4((a),(b),(c),(d))
+-#define BRW_GET_SWZ(swz, idx) GET_SWZ((swz), (idx))
+-
+-#define BRW_SWIZZLE_NOOP      BRW_SWIZZLE4(0,1,2,3)
+-#define BRW_SWIZZLE_XYZW      BRW_SWIZZLE4(0,1,2,3)
+-#define BRW_SWIZZLE_XXXX      BRW_SWIZZLE4(0,0,0,0)
+-#define BRW_SWIZZLE_YYYY      BRW_SWIZZLE4(1,1,1,1)
+-#define BRW_SWIZZLE_ZZZZ      BRW_SWIZZLE4(2,2,2,2)
+-#define BRW_SWIZZLE_WWWW      BRW_SWIZZLE4(3,3,3,3)
+-#define BRW_SWIZZLE_XYXY      BRW_SWIZZLE4(0,1,0,1)
+-#define BRW_SWIZZLE_YXYX      BRW_SWIZZLE4(1,0,1,0)
+-#define BRW_SWIZZLE_XZXZ      BRW_SWIZZLE4(0,2,0,2)
+-#define BRW_SWIZZLE_YZXW      BRW_SWIZZLE4(1,2,0,3)
+-#define BRW_SWIZZLE_YWYW      BRW_SWIZZLE4(1,3,1,3)
+-#define BRW_SWIZZLE_ZXYW      BRW_SWIZZLE4(2,0,1,3)
+-#define BRW_SWIZZLE_ZWZW      BRW_SWIZZLE4(2,3,2,3)
+-#define BRW_SWIZZLE_WZWZ      BRW_SWIZZLE4(3,2,3,2)
+-#define BRW_SWIZZLE_WZYX      BRW_SWIZZLE4(3,2,1,0)
+-#define BRW_SWIZZLE_XXZZ      BRW_SWIZZLE4(0,0,2,2)
+-#define BRW_SWIZZLE_YYWW      BRW_SWIZZLE4(1,1,3,3)
+-#define BRW_SWIZZLE_YXWZ      BRW_SWIZZLE4(1,0,3,2)
+-
+-#define BRW_SWZ_COMP_INPUT(comp) (BRW_SWIZZLE_XYZW >> ((comp)*3))
+-#define BRW_SWZ_COMP_OUTPUT(comp) (BRW_SWIZZLE_XYZW << ((comp)*3))
++#define SWIZZLE_XYXY      MAKE_SWIZZLE4(0,1,0,1)
++#define SWIZZLE_YXYX      MAKE_SWIZZLE4(1,0,1,0)
++#define SWIZZLE_XZXZ      MAKE_SWIZZLE4(0,2,0,2)
++#define SWIZZLE_YZXW      MAKE_SWIZZLE4(1,2,0,3)
++#define SWIZZLE_YWYW      MAKE_SWIZZLE4(1,3,1,3)
++#define SWIZZLE_ZXYW      MAKE_SWIZZLE4(2,0,1,3)
++#define SWIZZLE_ZWZW      MAKE_SWIZZLE4(2,3,2,3)
++#define SWIZZLE_WZWZ      MAKE_SWIZZLE4(3,2,3,2)
++#define SWIZZLE_WZYX      MAKE_SWIZZLE4(3,2,1,0)
++#define SWIZZLE_XXZZ      MAKE_SWIZZLE4(0,0,2,2)
++#define SWIZZLE_YYWW      MAKE_SWIZZLE4(1,1,3,3)
++#define SWIZZLE_YXWZ      MAKE_SWIZZLE4(1,0,3,2)
++
++#define BRW_SWZ_COMP_INPUT(comp) (SWIZZLE_XYZW >> ((comp)*3))
++#define BRW_SWZ_COMP_OUTPUT(comp) (SWIZZLE_XYZW << ((comp)*3))
+ 
+ static inline bool
+ brw_is_single_value_swizzle(unsigned swiz)
+ {
+-   return (swiz == BRW_SWIZZLE_XXXX ||
+-           swiz == BRW_SWIZZLE_YYYY ||
+-           swiz == BRW_SWIZZLE_ZZZZ ||
+-           swiz == BRW_SWIZZLE_WWWW);
++   return (swiz == SWIZZLE_XXXX ||
++           swiz == SWIZZLE_YYYY ||
++           swiz == SWIZZLE_ZZZZ ||
++           swiz == SWIZZLE_WWWW);
+ }
+ 
+ /**
+@@ -114,11 +105,11 @@ brw_is_single_value_swizzle(unsigned swiz)
+ static inline unsigned
+ brw_compose_swizzle(unsigned swz0, unsigned swz1)
+ {
+-   return BRW_SWIZZLE4(
+-      BRW_GET_SWZ(swz1, BRW_GET_SWZ(swz0, 0)),
+-      BRW_GET_SWZ(swz1, BRW_GET_SWZ(swz0, 1)),
+-      BRW_GET_SWZ(swz1, BRW_GET_SWZ(swz0, 2)),
+-      BRW_GET_SWZ(swz1, BRW_GET_SWZ(swz0, 3)));
++   return MAKE_SWIZZLE4(
++      GET_SWZ(swz1, GET_SWZ(swz0, 0)),
++      GET_SWZ(swz1, GET_SWZ(swz0, 1)),
++      GET_SWZ(swz1, GET_SWZ(swz0, 2)),
++      GET_SWZ(swz1, GET_SWZ(swz0, 3)));
+ }
+ 
+ /**
+@@ -131,7 +122,7 @@ brw_apply_swizzle_to_mask(unsigned swz, unsigned mask)
+    unsigned result = 0;
+ 
+    for (unsigned i = 0; i < 4; i++) {
+-      if (mask & (1 << BRW_GET_SWZ(swz, i)))
++      if (mask & (1 << GET_SWZ(swz, i)))
+          result |= 1 << i;
+    }
+ 
+@@ -150,7 +141,7 @@ brw_apply_inv_swizzle_to_mask(unsigned swz, unsigned mask)
+ 
+    for (unsigned i = 0; i < 4; i++) {
+       if (mask & (1 << i))
+-         result |= 1 << BRW_GET_SWZ(swz, i);
++         result |= 1 << GET_SWZ(swz, i);
+    }
+ 
+    return result;
+@@ -178,7 +169,7 @@ brw_swizzle_for_mask(unsigned mask)
+    for (unsigned i = 0; i < 4; i++)
+       last = swz[i] = (mask & (1 << i) ? i : last);
+ 
+-   return BRW_SWIZZLE4(swz[0], swz[1], swz[2], swz[3]);
++   return MAKE_SWIZZLE4(swz[0], swz[1], swz[2], swz[3]);
+ }
+ 
+ /**
+@@ -388,7 +379,7 @@ brw_int_type(unsigned sz, bool is_signed)
+  * \param vstride   one of BRW_VERTICAL_STRIDE_x
+  * \param width     one of BRW_WIDTH_x
+  * \param hstride   one of BRW_HORIZONTAL_STRIDE_x
+- * \param swizzle   one of BRW_SWIZZLE_x
++ * \param swizzle   one of SWIZZLE_x
+  * \param writemask WRITEMASK_X/Y/Z/W bitfield
+  */
+ static inline struct brw_reg
+@@ -452,7 +443,7 @@ brw_vec16_reg(enum brw_reg_file file, unsigned nr, unsigned subnr)
+                   BRW_VERTICAL_STRIDE_16,
+                   BRW_WIDTH_16,
+                   BRW_HORIZONTAL_STRIDE_1,
+-                  BRW_SWIZZLE_XYZW,
++                  SWIZZLE_XYZW,
+                   WRITEMASK_XYZW);
+ }
+ 
+@@ -469,7 +460,7 @@ brw_vec8_reg(enum brw_reg_file file, unsigned nr, unsigned subnr)
+                   BRW_VERTICAL_STRIDE_8,
+                   BRW_WIDTH_8,
+                   BRW_HORIZONTAL_STRIDE_1,
+-                  BRW_SWIZZLE_XYZW,
++                  SWIZZLE_XYZW,
+                   WRITEMASK_XYZW);
+ }
+ 
+@@ -486,7 +477,7 @@ brw_vec4_reg(enum brw_reg_file file, unsigned nr, unsigned subnr)
+                   BRW_VERTICAL_STRIDE_4,
+                   BRW_WIDTH_4,
+                   BRW_HORIZONTAL_STRIDE_1,
+-                  BRW_SWIZZLE_XYZW,
++                  SWIZZLE_XYZW,
+                   WRITEMASK_XYZW);
+ }
+ 
+@@ -503,7 +494,7 @@ brw_vec2_reg(enum brw_reg_file file, unsigned nr, unsigned subnr)
+                   BRW_VERTICAL_STRIDE_2,
+                   BRW_WIDTH_2,
+                   BRW_HORIZONTAL_STRIDE_1,
+-                  BRW_SWIZZLE_XYXY,
++                  SWIZZLE_XYXY,
+                   WRITEMASK_XY);
+ }
+ 
+@@ -520,7 +511,7 @@ brw_vec1_reg(enum brw_reg_file file, unsigned nr, unsigned subnr)
+                   BRW_VERTICAL_STRIDE_0,
+                   BRW_WIDTH_1,
+                   BRW_HORIZONTAL_STRIDE_0,
+-                  BRW_SWIZZLE_XXXX,
++                  SWIZZLE_XXXX,
+                   WRITEMASK_X);
+ }
+ 
+@@ -873,7 +864,7 @@ brw_ip_reg(void)
+                   BRW_VERTICAL_STRIDE_4, /* ? */
+                   BRW_WIDTH_1,
+                   BRW_HORIZONTAL_STRIDE_0,
+-                  BRW_SWIZZLE_XYZW, /* NOTE! */
++                  SWIZZLE_XYZW, /* NOTE! */
+                   WRITEMASK_XYZW); /* NOTE! */
+ }
+ 
+@@ -889,7 +880,7 @@ brw_notification_reg(void)
+                   BRW_VERTICAL_STRIDE_0,
+                   BRW_WIDTH_1,
+                   BRW_HORIZONTAL_STRIDE_0,
+-                  BRW_SWIZZLE_XXXX,
++                  SWIZZLE_XXXX,
+                   WRITEMASK_X);
+ }
+ 
+diff --git a/src/intel/compiler/brw_vec4.cpp b/src/intel/compiler/brw_vec4.cpp
+index 6d76725422183..5e27a48c82bbc 100644
+--- a/src/intel/compiler/brw_vec4.cpp
++++ b/src/intel/compiler/brw_vec4.cpp
+@@ -55,7 +55,7 @@ src_reg::src_reg(enum brw_reg_file file, int nr, const glsl_type *type)
+    if (type && (type->is_scalar() || type->is_vector() || type->is_matrix()))
+       this->swizzle = brw_swizzle_for_size(type->vector_elements);
+    else
+-      this->swizzle = BRW_SWIZZLE_XYZW;
++      this->swizzle = SWIZZLE_XYZW;
+    if (type)
+       this->type = brw_type_for_base_type(type);
+ }
+@@ -852,7 +852,7 @@ vec4_instruction::can_reswizzle(const struct intel_device_info *devinfo,
+    /* Gfx6 MATH instructions can not execute in align16 mode, so swizzles
+     * are not allowed.
+     */
+-   if (devinfo->ver == 6 && is_math() && swizzle != BRW_SWIZZLE_XYZW)
++   if (devinfo->ver == 6 && is_math() && swizzle != SWIZZLE_XYZW)
+       return false;
+ 
+    /* If we write to the flag register changing the swizzle would change
+@@ -921,10 +921,10 @@ vec4_instruction::reswizzle(int dst_writemask, int swizzle)
+                   (src[i].ud >> 24) & 0x0ff,
+                };
+ 
+-               src[i] = brw_imm_vf4(imm[BRW_GET_SWZ(swizzle, 0)],
+-                                    imm[BRW_GET_SWZ(swizzle, 1)],
+-                                    imm[BRW_GET_SWZ(swizzle, 2)],
+-                                    imm[BRW_GET_SWZ(swizzle, 3)]);
++               src[i] = brw_imm_vf4(imm[GET_SWZ(swizzle, 0)],
++                                    imm[GET_SWZ(swizzle, 1)],
++                                    imm[GET_SWZ(swizzle, 2)],
++                                    imm[GET_SWZ(swizzle, 3)]);
+             }
+ 
+             continue;
+@@ -975,7 +975,7 @@ vec4_visitor::opt_register_coalesce()
+             if ((inst->dst.writemask & (1 << c)) == 0)
+                continue;
+ 
+-            if (BRW_GET_SWZ(inst->src[0].swizzle, c) != c) {
++            if (GET_SWZ(inst->src[0].swizzle, c) != c) {
+                is_nop_mov = false;
+                break;
+             }
+@@ -1479,7 +1479,7 @@ vec4_visitor::dump_instruction(const backend_instruction *be_inst, FILE *file) c
+          static const char *chans[4] = {"x", "y", "z", "w"};
+          fprintf(file, ".");
+          for (int c = 0; c < 4; c++) {
+-            fprintf(file, "%s", chans[BRW_GET_SWZ(inst->src[i].swizzle, c)]);
++            fprintf(file, "%s", chans[GET_SWZ(inst->src[i].swizzle, c)]);
+          }
+       }
+ 
+@@ -1655,7 +1655,7 @@ vec4_visitor::get_timestamp()
+                                 BRW_VERTICAL_STRIDE_0,
+                                 BRW_WIDTH_4,
+                                 BRW_HORIZONTAL_STRIDE_4,
+-                                BRW_SWIZZLE_XYZW,
++                                SWIZZLE_XYZW,
+                                 WRITEMASK_XYZW));
+ 
+    dst_reg dst = dst_reg(this, glsl_type::uvec4_type);
+@@ -1800,7 +1800,7 @@ vec4_visitor::convert_to_hw_regs()
+             if (inst->src[i].vstride == BRW_VERTICAL_STRIDE_0 &&
+                 type_sz(inst->src[i].type) < 8) {
+                assert(brw_is_single_value_swizzle(inst->src[i].swizzle));
+-               inst->src[i].subnr += 4 * BRW_GET_SWZ(inst->src[i].swizzle, 0);
++               inst->src[i].subnr += 4 * GET_SWZ(inst->src[i].swizzle, 0);
+             }
+          }
+       }
+@@ -2077,14 +2077,14 @@ static bool
+ is_gfx7_supported_64bit_swizzle(vec4_instruction *inst, unsigned arg)
+ {
+    switch (inst->src[arg].swizzle) {
+-   case BRW_SWIZZLE_XXXX:
+-   case BRW_SWIZZLE_YYYY:
+-   case BRW_SWIZZLE_ZZZZ:
+-   case BRW_SWIZZLE_WWWW:
+-   case BRW_SWIZZLE_XYXY:
+-   case BRW_SWIZZLE_YXYX:
+-   case BRW_SWIZZLE_ZWZW:
+-   case BRW_SWIZZLE_WZWZ:
++   case SWIZZLE_XXXX:
++   case SWIZZLE_YYYY:
++   case SWIZZLE_ZZZZ:
++   case SWIZZLE_WWWW:
++   case SWIZZLE_XYXY:
++   case SWIZZLE_YXYX:
++   case SWIZZLE_ZWZW:
++   case SWIZZLE_WZWZ:
+       return true;
+    default:
+       return false;
+@@ -2122,10 +2122,10 @@ vec4_visitor::is_supported_64bit_region(vec4_instruction *inst, unsigned arg)
+       return false;
+ 
+    switch (src.swizzle) {
+-   case BRW_SWIZZLE_XYZW:
+-   case BRW_SWIZZLE_XXZZ:
+-   case BRW_SWIZZLE_YYWW:
+-   case BRW_SWIZZLE_YXWZ:
++   case SWIZZLE_XYZW:
++   case SWIZZLE_XXZZ:
++   case SWIZZLE_YYWW:
++   case SWIZZLE_YXWZ:
+       return true;
+    default:
+       return devinfo->ver == 7 && is_gfx7_supported_64bit_swizzle(inst, arg);
+@@ -2183,8 +2183,8 @@ vec4_visitor::scalarize_df()
+          vec4_instruction *scalar_inst = new(mem_ctx) vec4_instruction(*inst);
+ 
+          for (unsigned i = 0; i < 3; i++) {
+-            unsigned swz = BRW_GET_SWZ(inst->src[i].swizzle, chan);
+-            scalar_inst->src[i].swizzle = BRW_SWIZZLE4(swz, swz, swz, swz);
++            unsigned swz = GET_SWZ(inst->src[i].swizzle, chan);
++            scalar_inst->src[i].swizzle = MAKE_SWIZZLE4(swz, swz, swz, swz);
+          }
+ 
+          scalar_inst->dst.writemask = chan_mask;
+@@ -2294,9 +2294,9 @@ vec4_visitor::apply_logical_swizzle(struct brw_reg *hw_reg,
+        * components, when expanded to 32-bit swizzles, match the semantics
+        * of the original 64-bit swizzle with 2-wide row regioning.
+        */
+-      unsigned swizzle0 = BRW_GET_SWZ(reg.swizzle, 0);
+-      unsigned swizzle1 = BRW_GET_SWZ(reg.swizzle, 1);
+-      hw_reg->swizzle = BRW_SWIZZLE4(swizzle0 * 2, swizzle0 * 2 + 1,
++      unsigned swizzle0 = GET_SWZ(reg.swizzle, 0);
++      unsigned swizzle1 = GET_SWZ(reg.swizzle, 1);
++      hw_reg->swizzle = MAKE_SWIZZLE4(swizzle0 * 2, swizzle0 * 2 + 1,
+                                      swizzle1 * 2, swizzle1 * 2 + 1);
+    } else {
+       /* If we got here then we have one of the following:
+@@ -2308,8 +2308,8 @@ vec4_visitor::apply_logical_swizzle(struct brw_reg *hw_reg,
+        *    swizzles. If the latter, they are never cross-dvec2 channels. For
+        *    these we always need to activate the gfx7 vstride=0 exploit.
+        */
+-      unsigned swizzle0 = BRW_GET_SWZ(reg.swizzle, 0);
+-      unsigned swizzle1 = BRW_GET_SWZ(reg.swizzle, 1);
++      unsigned swizzle0 = GET_SWZ(reg.swizzle, 0);
++      unsigned swizzle1 = GET_SWZ(reg.swizzle, 1);
+       assert((swizzle0 < 2) == (swizzle1 < 2));
+ 
+       /* To gain access to Z/W components we need to select the second half
+@@ -2337,7 +2337,7 @@ vec4_visitor::apply_logical_swizzle(struct brw_reg *hw_reg,
+          hw_reg->vstride = BRW_VERTICAL_STRIDE_0;
+       }
+ 
+-      hw_reg->swizzle = BRW_SWIZZLE4(swizzle0 * 2, swizzle0 * 2 + 1,
++      hw_reg->swizzle = MAKE_SWIZZLE4(swizzle0 * 2, swizzle0 * 2 + 1,
+                                      swizzle1 * 2, swizzle1 * 2 + 1);
+    }
+ }
+@@ -2359,7 +2359,7 @@ vec4_visitor::run()
+       const unsigned mask_param = stage_prog_data->push_reg_mask_param;
+       src_reg mask = src_reg(dst_reg(UNIFORM, mask_param / 4));
+       assert(mask_param % 2 == 0); /* Should be 64-bit-aligned */
+-      mask.swizzle = BRW_SWIZZLE4((mask_param + 0) % 4,
++      mask.swizzle = MAKE_SWIZZLE4((mask_param + 0) % 4,
+                                   (mask_param + 1) % 4,
+                                   (mask_param + 0) % 4,
+                                   (mask_param + 1) % 4);
+diff --git a/src/intel/compiler/brw_vec4_cmod_propagation.cpp b/src/intel/compiler/brw_vec4_cmod_propagation.cpp
+index 195cc3d5867ca..8c23e55989d04 100644
+--- a/src/intel/compiler/brw_vec4_cmod_propagation.cpp
++++ b/src/intel/compiler/brw_vec4_cmod_propagation.cpp
+@@ -42,7 +42,7 @@ writemasks_incompatible(const vec4_instruction *earlier,
+    return (earlier->dst.writemask != WRITEMASK_X &&
+            earlier->dst.writemask != WRITEMASK_XYZW) ||
+           (earlier->dst.writemask == WRITEMASK_XYZW &&
+-           later->src[0].swizzle != BRW_SWIZZLE_XYZW) ||
++           later->src[0].swizzle != SWIZZLE_XYZW) ||
+           (later->dst.writemask & ~earlier->dst.writemask) != 0;
+ }
+ 
+@@ -160,13 +160,13 @@ opt_cmod_propagation_local(bblock_t *block, vec4_visitor *v)
+                 (inst->opcode == BRW_OPCODE_CMP ||
+                  inst->opcode == BRW_OPCODE_MOV) &&
+                 scan_inst->opcode == BRW_OPCODE_CMP &&
+-                ((inst->src[0].swizzle == BRW_SWIZZLE_XXXX &&
++                ((inst->src[0].swizzle == SWIZZLE_XXXX &&
+                   scan_inst->dst.writemask == WRITEMASK_X) ||
+-                 (inst->src[0].swizzle == BRW_SWIZZLE_YYYY &&
++                 (inst->src[0].swizzle == SWIZZLE_YYYY &&
+                   scan_inst->dst.writemask == WRITEMASK_Y) ||
+-                 (inst->src[0].swizzle == BRW_SWIZZLE_ZZZZ &&
++                 (inst->src[0].swizzle == SWIZZLE_ZZZZ &&
+                   scan_inst->dst.writemask == WRITEMASK_Z) ||
+-                 (inst->src[0].swizzle == BRW_SWIZZLE_WWWW &&
++                 (inst->src[0].swizzle == SWIZZLE_WWWW &&
+                   scan_inst->dst.writemask == WRITEMASK_W))) {
+                if (inst->dst.writemask != scan_inst->dst.writemask) {
+                   src_reg temp(v, glsl_type::vec4_type, 1);
+@@ -203,33 +203,33 @@ opt_cmod_propagation_local(bblock_t *block, vec4_visitor *v)
+                   unsigned src1_chan;
+                   switch (scan_inst->dst.writemask) {
+                   case WRITEMASK_X:
+-                     src0_chan = BRW_GET_SWZ(scan_inst->src[0].swizzle, 0);
+-                     src1_chan = BRW_GET_SWZ(scan_inst->src[1].swizzle, 0);
++                     src0_chan = GET_SWZ(scan_inst->src[0].swizzle, 0);
++                     src1_chan = GET_SWZ(scan_inst->src[1].swizzle, 0);
+                      break;
+                   case WRITEMASK_Y:
+-                     src0_chan = BRW_GET_SWZ(scan_inst->src[0].swizzle, 1);
+-                     src1_chan = BRW_GET_SWZ(scan_inst->src[1].swizzle, 1);
++                     src0_chan = GET_SWZ(scan_inst->src[0].swizzle, 1);
++                     src1_chan = GET_SWZ(scan_inst->src[1].swizzle, 1);
+                      break;
+                   case WRITEMASK_Z:
+-                     src0_chan = BRW_GET_SWZ(scan_inst->src[0].swizzle, 2);
+-                     src1_chan = BRW_GET_SWZ(scan_inst->src[1].swizzle, 2);
++                     src0_chan = GET_SWZ(scan_inst->src[0].swizzle, 2);
++                     src1_chan = GET_SWZ(scan_inst->src[1].swizzle, 2);
+                      break;
+                   case WRITEMASK_W:
+-                     src0_chan = BRW_GET_SWZ(scan_inst->src[0].swizzle, 3);
+-                     src1_chan = BRW_GET_SWZ(scan_inst->src[1].swizzle, 3);
++                     src0_chan = GET_SWZ(scan_inst->src[0].swizzle, 3);
++                     src1_chan = GET_SWZ(scan_inst->src[1].swizzle, 3);
+                      break;
+                   default:
+                      unreachable("Impossible writemask");
+                   }
+ 
+-                  scan_inst->src[0].swizzle = BRW_SWIZZLE4(src0_chan,
++                  scan_inst->src[0].swizzle = MAKE_SWIZZLE4(src0_chan,
+                                                            src0_chan,
+                                                            src0_chan,
+                                                            src0_chan);
+ 
+                   /* There's no swizzle on immediate value sources. */
+                   if (scan_inst->src[1].file != IMM) {
+-                     scan_inst->src[1].swizzle = BRW_SWIZZLE4(src1_chan,
++                     scan_inst->src[1].swizzle = MAKE_SWIZZLE4(src1_chan,
+                                                               src1_chan,
+                                                               src1_chan,
+                                                               src1_chan);
+diff --git a/src/intel/compiler/brw_vec4_copy_propagation.cpp b/src/intel/compiler/brw_vec4_copy_propagation.cpp
+index 21be3a6b67ad8..b98355b42dd9e 100644
+--- a/src/intel/compiler/brw_vec4_copy_propagation.cpp
++++ b/src/intel/compiler/brw_vec4_copy_propagation.cpp
+@@ -75,7 +75,7 @@ is_channel_updated(vec4_instruction *inst, src_reg *values[4], int ch)
+ 
+    return regions_overlap(*src, REG_SIZE, inst->dst, inst->size_written) &&
+           (inst->dst.offset != src->offset ||
+-           inst->dst.writemask & (1 << BRW_GET_SWZ(src->swizzle, ch)));
++           inst->dst.writemask & (1 << GET_SWZ(src->swizzle, ch)));
+ }
+ 
+ /**
+@@ -97,12 +97,12 @@ get_copy_value(const copy_entry &entry, unsigned readmask)
+             if (src.file == IMM) {
+                swz[i] = i;
+             } else {
+-               swz[i] = BRW_GET_SWZ(src.swizzle, i);
++               swz[i] = GET_SWZ(src.swizzle, i);
+                /* Overwrite the original swizzle so the src_reg::equals call
+                 * below doesn't care about it, the correct swizzle will be
+                 * calculated once the swizzles of all components are known.
+                 */
+-               src.swizzle = BRW_SWIZZLE_XYZW;
++               src.swizzle = SWIZZLE_XYZW;
+             }
+ 
+             if (value.file == BAD_FILE) {
+@@ -118,7 +118,7 @@ get_copy_value(const copy_entry &entry, unsigned readmask)
+ 
+    return swizzle(value,
+                   brw_compose_swizzle(brw_swizzle_for_mask(readmask),
+-                                      BRW_SWIZZLE4(swz[0], swz[1],
++                                      MAKE_SWIZZLE4(swz[0], swz[1],
+                                                    swz[2], swz[3])));
+ }
+ 
+@@ -355,7 +355,7 @@ try_copy_propagate(const struct brw_compiler *compiler,
+       return false;
+ 
+    /* Reject cases that would violate register regioning restrictions. */
+-   if ((value.file == UNIFORM || value.swizzle != BRW_SWIZZLE_XYZW) &&
++   if ((value.file == UNIFORM || value.swizzle != SWIZZLE_XYZW) &&
+        ((devinfo->ver == 6 && inst->is_math()) ||
+         inst->is_send_from_grf() ||
+         inst->uses_indirect_addressing())) {
+@@ -379,7 +379,7 @@ try_copy_propagate(const struct brw_compiler *compiler,
+     * so copy-propagation won't be safe if the composed swizzle is anything
+     * other than the identity.
+     */
+-   if (is_align1_opcode(inst->opcode) && composed_swizzle != BRW_SWIZZLE_XYZW)
++   if (is_align1_opcode(inst->opcode) && composed_swizzle != SWIZZLE_XYZW)
+       return false;
+ 
+    if (inst->is_3src(compiler) &&
+diff --git a/src/intel/compiler/brw_vec4_generator.cpp b/src/intel/compiler/brw_vec4_generator.cpp
+index 286ba837906b8..6ebbee43a59d4 100644
+--- a/src/intel/compiler/brw_vec4_generator.cpp
++++ b/src/intel/compiler/brw_vec4_generator.cpp
+@@ -48,7 +48,7 @@ check_gfx6_math_src_arg(struct brw_reg src)
+    /* Source swizzles are ignored. */
+    assert(!src.abs);
+    assert(!src.negate);
+-   assert(src.swizzle == BRW_SWIZZLE_XYZW);
++   assert(src.swizzle == SWIZZLE_XYZW);
+ }
+ 
+ static void
+@@ -1416,7 +1416,7 @@ generate_mov_indirect(struct brw_codegen *p,
+       reg.nr = imm_byte_offset / REG_SIZE;
+       reg.subnr = (imm_byte_offset / (REG_SIZE / 2)) % 2;
+       unsigned shift = (imm_byte_offset / 4) % 4;
+-      reg.swizzle += BRW_SWIZZLE4(shift, shift, shift, shift);
++      reg.swizzle += MAKE_SWIZZLE4(shift, shift, shift, shift);
+ 
+       brw_MOV(p, dst, reg);
+    } else {
+@@ -1432,7 +1432,7 @@ generate_mov_indirect(struct brw_codegen *p,
+        * the subnr (probably 0) to an align1 subnr and add in the swizzle.
+        */
+       assert(brw_is_single_value_swizzle(indirect.swizzle));
+-      indirect.subnr = (indirect.subnr * 4 + BRW_GET_SWZ(indirect.swizzle, 0));
++      indirect.subnr = (indirect.subnr * 4 + GET_SWZ(indirect.swizzle, 0));
+ 
+       /* We then use a region of <8,4,0>:uw to pick off the first 2 bytes of
+        * the indirect and splat it out to all four channels of the given half
+@@ -1443,11 +1443,11 @@ generate_mov_indirect(struct brw_codegen *p,
+       brw_ADD(p, addr, indirect, brw_imm_uw(imm_byte_offset));
+ 
+       /* Now we need to incorporate the swizzle from the source register */
+-      if (reg.swizzle != BRW_SWIZZLE_XXXX) {
+-         uint32_t uv_swiz = BRW_GET_SWZ(reg.swizzle, 0) << 2 |
+-                            BRW_GET_SWZ(reg.swizzle, 1) << 6 |
+-                            BRW_GET_SWZ(reg.swizzle, 2) << 10 |
+-                            BRW_GET_SWZ(reg.swizzle, 3) << 14;
++      if (reg.swizzle != SWIZZLE_XXXX) {
++         uint32_t uv_swiz = GET_SWZ(reg.swizzle, 0) << 2 |
++                            GET_SWZ(reg.swizzle, 1) << 6 |
++                            GET_SWZ(reg.swizzle, 2) << 10 |
++                            GET_SWZ(reg.swizzle, 3) << 14;
+          uv_swiz |= uv_swiz << 16;
+ 
+          brw_ADD(p, addr, addr, brw_imm_uv(uv_swiz));
+@@ -1469,9 +1469,9 @@ generate_zero_oob_push_regs(struct brw_codegen *p,
+    assert(want_zero);
+ 
+    assert(bit_mask_in.file == BRW_GENERAL_REGISTER_FILE);
+-   assert(BRW_GET_SWZ(bit_mask_in.swizzle, 1) ==
+-          BRW_GET_SWZ(bit_mask_in.swizzle, 0) + 1);
+-   bit_mask_in.subnr += BRW_GET_SWZ(bit_mask_in.swizzle, 0) * 4;
++   assert(GET_SWZ(bit_mask_in.swizzle, 1) ==
++          GET_SWZ(bit_mask_in.swizzle, 0) + 1);
++   bit_mask_in.subnr += GET_SWZ(bit_mask_in.swizzle, 0) * 4;
+    bit_mask_in.type = BRW_REGISTER_TYPE_W;
+ 
+    /* Scratch should be 3 registers in the GRF */
+diff --git a/src/intel/compiler/brw_vec4_live_variables.h b/src/intel/compiler/brw_vec4_live_variables.h
+index 39d97c8a521c2..2d35c7ded6e87 100644
+--- a/src/intel/compiler/brw_vec4_live_variables.h
++++ b/src/intel/compiler/brw_vec4_live_variables.h
+@@ -118,7 +118,7 @@ var_from_reg(const simple_allocator &alloc, const src_reg &reg,
+    const unsigned csize = DIV_ROUND_UP(type_sz(reg.type), 4);
+    unsigned result =
+       8 * alloc.offsets[reg.nr] + reg.offset / 4 +
+-      (BRW_GET_SWZ(reg.swizzle, c) + k / csize * 4) * csize + k % csize;
++      (GET_SWZ(reg.swizzle, c) + k / csize * 4) * csize + k % csize;
+    /* Do not exceed the limit for this register */
+    assert(result < 8 * (alloc.offsets[reg.nr] + alloc.sizes[reg.nr]));
+    return result;
+diff --git a/src/intel/compiler/brw_vec4_nir.cpp b/src/intel/compiler/brw_vec4_nir.cpp
+index 756eb52dad4d9..c04e9aa5f13e1 100644
+--- a/src/intel/compiler/brw_vec4_nir.cpp
++++ b/src/intel/compiler/brw_vec4_nir.cpp
+@@ -292,7 +292,7 @@ setup_imm_df(const vec4_builder &bld, double v)
+       const vec4_builder ubld = bld.exec_all();
+       const dst_reg dst = bld.vgrf(BRW_REGISTER_TYPE_DF);
+       ubld.DIM(dst, brw_imm_df(v));
+-      return swizzle(src_reg(dst), BRW_SWIZZLE_XXXX);
++      return swizzle(src_reg(dst), SWIZZLE_XXXX);
+    }
+ 
+    /* gfx7 does not support DF immediates */
+@@ -320,7 +320,7 @@ setup_imm_df(const vec4_builder &bld, double v)
+       ubld.MOV(writemask(offset(tmp, 8, n), WRITEMASK_Y), brw_imm_ud(di.i2));
+    }
+ 
+-   return swizzle(src_reg(retype(tmp, BRW_REGISTER_TYPE_DF)), BRW_SWIZZLE_XXXX);
++   return swizzle(src_reg(retype(tmp, BRW_REGISTER_TYPE_DF)), SWIZZLE_XXXX);
+ }
+ 
+ void
+@@ -591,7 +591,7 @@ vec4_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
+          src.offset = ROUND_DOWN_TO(offset, 16);
+          shift = (offset % 16) / type_size;
+          assert(shift + instr->num_components <= 4);
+-         src.swizzle += BRW_SWIZZLE4(shift, shift, shift, shift);
++         src.swizzle += MAKE_SWIZZLE4(shift, shift, shift, shift);
+ 
+          emit(MOV(dest, src));
+       } else {
+@@ -697,7 +697,7 @@ vec4_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
+          unsigned load_offset = nir_src_as_uint(instr->src[1]);
+          unsigned type_size = type_sz(dest.type);
+          packed_consts.swizzle +=
+-            BRW_SWIZZLE4(load_offset % 16 / type_size,
++            MAKE_SWIZZLE4(load_offset % 16 / type_size,
+                          load_offset % 16 / type_size,
+                          load_offset % 16 / type_size,
+                          load_offset % 16 / type_size);
+@@ -768,7 +768,7 @@ vec4_visitor::nir_emit_ssbo_atomic(int op, nir_intrinsic_instr *instr)
+ static unsigned
+ brw_swizzle_for_nir_swizzle(uint8_t swizzle[4])
+ {
+-   return BRW_SWIZZLE4(swizzle[0], swizzle[1], swizzle[2], swizzle[3]);
++   return MAKE_SWIZZLE4(swizzle[0], swizzle[1], swizzle[2], swizzle[3]);
+ }
+ 
+ bool
+@@ -1593,12 +1593,12 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
+    case nir_op_pack_uvec2_to_uint: {
+       dst_reg tmp1 = dst_reg(this, glsl_type::uint_type);
+       tmp1.writemask = WRITEMASK_X;
+-      op[0].swizzle = BRW_SWIZZLE_YYYY;
++      op[0].swizzle = SWIZZLE_YYYY;
+       emit(SHL(tmp1, op[0], src_reg(brw_imm_ud(16u))));
+ 
+       dst_reg tmp2 = dst_reg(this, glsl_type::uint_type);
+       tmp2.writemask = WRITEMASK_X;
+-      op[0].swizzle = BRW_SWIZZLE_XXXX;
++      op[0].swizzle = SWIZZLE_XXXX;
+       emit(AND(tmp2, op[0], src_reg(brw_imm_ud(0xffffu))));
+ 
+       emit(OR(dst, src_reg(tmp1), src_reg(tmp2)));
+@@ -1637,7 +1637,7 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
+        * rest of components to avoid regressions. In the vec4_visitor IR code path
+        * this is not needed because the operand has already the correct swizzle.
+        */
+-      op[0].swizzle = brw_compose_swizzle(BRW_SWIZZLE_XXXX, op[0].swizzle);
++      op[0].swizzle = brw_compose_swizzle(SWIZZLE_XXXX, op[0].swizzle);
+       emit_unpack_half_2x16(dst, op[0]);
+       break;
+ 
+@@ -2207,7 +2207,7 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
+              * the .y channel of the second vec4 of params, so replicate .x across
+              * the whole vec4 and then mask off everything except .y
+              */
+-            mcs.swizzle = BRW_SWIZZLE_XXXX;
++            mcs.swizzle = SWIZZLE_XXXX;
+             emit(MOV(dst_reg(MRF, param_base + 1, glsl_type::uint_type, WRITEMASK_Y),
+                      mcs));
+          }
+@@ -2218,16 +2218,16 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
+          const brw_reg_type type = lod.type;
+ 
+ 	 if (devinfo->ver >= 5) {
+-	    lod.swizzle = BRW_SWIZZLE4(SWIZZLE_X,SWIZZLE_X,SWIZZLE_Y,SWIZZLE_Y);
+-	    lod2.swizzle = BRW_SWIZZLE4(SWIZZLE_X,SWIZZLE_X,SWIZZLE_Y,SWIZZLE_Y);
++	    lod.swizzle = MAKE_SWIZZLE4(SWIZZLE_X,SWIZZLE_X,SWIZZLE_Y,SWIZZLE_Y);
++	    lod2.swizzle = MAKE_SWIZZLE4(SWIZZLE_X,SWIZZLE_X,SWIZZLE_Y,SWIZZLE_Y);
+ 	    emit(MOV(dst_reg(MRF, param_base + 1, type, WRITEMASK_XZ), lod));
+ 	    emit(MOV(dst_reg(MRF, param_base + 1, type, WRITEMASK_YW), lod2));
+ 	    inst->mlen++;
+ 
+ 	    if (nir_tex_instr_dest_size(instr) == 3 ||
+                 shadow_comparator.file != BAD_FILE) {
+-	       lod.swizzle = BRW_SWIZZLE_ZZZZ;
+-	       lod2.swizzle = BRW_SWIZZLE_ZZZZ;
++	       lod.swizzle = SWIZZLE_ZZZZ;
++	       lod2.swizzle = SWIZZLE_ZZZZ;
+ 	       emit(MOV(dst_reg(MRF, param_base + 2, type, WRITEMASK_X), lod));
+ 	       emit(MOV(dst_reg(MRF, param_base + 2, type, WRITEMASK_Y), lod2));
+ 	       inst->mlen++;
+@@ -2276,7 +2276,7 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
+    if (instr->op == nir_texop_query_levels) {
+       /* # levels is in .w */
+       src_reg swizzled(dest);
+-      swizzled.swizzle = BRW_SWIZZLE4(SWIZZLE_W, SWIZZLE_W,
++      swizzled.swizzle = MAKE_SWIZZLE4(SWIZZLE_W, SWIZZLE_W,
+                                       SWIZZLE_W, SWIZZLE_W);
+       emit(MOV(dest, swizzled));
+    }
+@@ -2363,7 +2363,7 @@ vec4_visitor::shuffle_64bit_data(dst_reg dst, src_reg src, bool for_write,
+                                    vec4_builder(this).at(block, ref->next);
+ 
+    /* Resolve swizzle in src */
+-   if (src.swizzle != BRW_SWIZZLE_XYZW) {
++   if (src.swizzle != SWIZZLE_XYZW) {
+       dst_reg data = dst_reg(this, glsl_type::dvec4_type);
+       bld.emit(mov_op, data, src);
+       src = src_reg(data);
+@@ -2375,12 +2375,12 @@ vec4_visitor::shuffle_64bit_data(dst_reg dst, src_reg src, bool for_write,
+    /* dst+0.ZW = src+1.XY */
+    bld.group(4, for_write ? 1 : 0)
+             .emit(mov_op, writemask(dst, WRITEMASK_ZW),
+-                  swizzle(byte_offset(src, REG_SIZE), BRW_SWIZZLE_XYXY));
++                  swizzle(byte_offset(src, REG_SIZE), SWIZZLE_XYXY));
+ 
+    /* dst+1.XY = src+0.ZW */
+    bld.group(4, for_write ? 0 : 1)
+             .emit(mov_op, writemask(byte_offset(dst, REG_SIZE), WRITEMASK_XY),
+-                  swizzle(src, BRW_SWIZZLE_ZWZW));
++                  swizzle(src, SWIZZLE_ZWZW));
+ 
+    /* dst+1.ZW = src+1.ZW */
+    return bld.group(4, 1)
+diff --git a/src/intel/compiler/brw_vec4_reg_allocate.cpp b/src/intel/compiler/brw_vec4_reg_allocate.cpp
+index 7aaacd0c7cb8e..ef18ad9db7bfc 100644
+--- a/src/intel/compiler/brw_vec4_reg_allocate.cpp
++++ b/src/intel/compiler/brw_vec4_reg_allocate.cpp
+@@ -488,7 +488,7 @@ vec4_visitor::spill_reg(unsigned spill_reg_nr)
+                src_reg temp = inst->src[i];
+                temp.nr = scratch_reg;
+                temp.offset = 0;
+-               temp.swizzle = BRW_SWIZZLE_XYZW;
++               temp.swizzle = SWIZZLE_XYZW;
+                emit_scratch_read(block, inst,
+                                  dst_reg(temp), inst->src[i], spill_offset);
+                temp.offset = inst->src[i].offset;
+diff --git a/src/intel/compiler/brw_vec4_surface_builder.cpp b/src/intel/compiler/brw_vec4_surface_builder.cpp
+index fce3133bef84b..1bdd8792fd0cf 100644
+--- a/src/intel/compiler/brw_vec4_surface_builder.cpp
++++ b/src/intel/compiler/brw_vec4_surface_builder.cpp
+@@ -194,12 +194,12 @@ namespace brw {
+ 
+          if (size >= 1) {
+             bld.MOV(writemask(srcs, WRITEMASK_X),
+-                    swizzle(src0, BRW_SWIZZLE_XXXX));
++                    swizzle(src0, SWIZZLE_XXXX));
+          }
+ 
+          if (size >= 2) {
+             bld.MOV(writemask(srcs, WRITEMASK_Y),
+-                    swizzle(src1, BRW_SWIZZLE_XXXX));
++                    swizzle(src1, SWIZZLE_XXXX));
+          }
+ 
+          return emit_send(bld, VEC4_OPCODE_UNTYPED_ATOMIC, src_reg(),
+diff --git a/src/intel/compiler/brw_vec4_tcs.cpp b/src/intel/compiler/brw_vec4_tcs.cpp
+index efb18592da989..47f78df92a21c 100644
+--- a/src/intel/compiler/brw_vec4_tcs.cpp
++++ b/src/intel/compiler/brw_vec4_tcs.cpp
+@@ -176,7 +176,7 @@ vec4_tcs_visitor::emit_input_urb_read(const dst_reg &dst,
+     * Also attempt to deal with gl_PointSize being in the .w component.
+     */
+    if (inst->offset == 0 && indirect_offset.file == BAD_FILE) {
+-      emit(MOV(dst, swizzle(src_reg(temp), BRW_SWIZZLE_WWWW)));
++      emit(MOV(dst, swizzle(src_reg(temp), SWIZZLE_WWWW)));
+    } else {
+       src_reg src = src_reg(temp);
+       src.swizzle = BRW_SWZ_COMP_INPUT(first_component);
+@@ -287,14 +287,14 @@ vec4_tcs_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
+       assert(nir_src_bit_size(instr->src[0]) == 32);
+       src_reg value = get_nir_src(instr->src[0]);
+       unsigned mask = nir_intrinsic_write_mask(instr);
+-      unsigned swiz = BRW_SWIZZLE_XYZW;
++      unsigned swiz = SWIZZLE_XYZW;
+ 
+       src_reg indirect_offset = get_indirect_offset(instr);
+       unsigned imm_offset = nir_intrinsic_base(instr);
+ 
+       unsigned first_component = nir_intrinsic_component(instr);
+       if (first_component) {
+-         assert(swiz == BRW_SWIZZLE_XYZW);
++         assert(swiz == SWIZZLE_XYZW);
+          swiz = BRW_SWZ_COMP_OUTPUT(first_component);
+          mask = mask << first_component;
+       }
+diff --git a/src/intel/compiler/brw_vec4_tes.cpp b/src/intel/compiler/brw_vec4_tes.cpp
+index af572a857c61d..27e059f6a69e7 100644
+--- a/src/intel/compiler/brw_vec4_tes.cpp
++++ b/src/intel/compiler/brw_vec4_tes.cpp
+@@ -126,18 +126,18 @@ vec4_tes_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
+       if (tes_prog_data->domain == BRW_TESS_DOMAIN_ISOLINE) {
+          emit(MOV(get_nir_dest(instr->dest, BRW_REGISTER_TYPE_F),
+                   swizzle(src_reg(ATTR, 1, glsl_type::vec4_type),
+-                          BRW_SWIZZLE_ZWZW)));
++                          SWIZZLE_ZWZW)));
+       } else {
+          emit(MOV(get_nir_dest(instr->dest, BRW_REGISTER_TYPE_F),
+                   swizzle(src_reg(ATTR, 1, glsl_type::vec4_type),
+-                          BRW_SWIZZLE_WZYX)));
++                          SWIZZLE_WZYX)));
+       }
+       break;
+    case nir_intrinsic_load_tess_level_inner:
+       if (tes_prog_data->domain == BRW_TESS_DOMAIN_QUAD) {
+          emit(MOV(get_nir_dest(instr->dest, BRW_REGISTER_TYPE_F),
+                   swizzle(src_reg(ATTR, 0, glsl_type::vec4_type),
+-                          BRW_SWIZZLE_WZYX)));
++                          SWIZZLE_WZYX)));
+       } else {
+          emit(MOV(get_nir_dest(instr->dest, BRW_REGISTER_TYPE_F),
+                   src_reg(ATTR, 1, glsl_type::float_type)));
+diff --git a/src/intel/compiler/brw_vec4_visitor.cpp b/src/intel/compiler/brw_vec4_visitor.cpp
+index 33b6822f8c599..9285763e0c4ec 100644
+--- a/src/intel/compiler/brw_vec4_visitor.cpp
++++ b/src/intel/compiler/brw_vec4_visitor.cpp
+@@ -418,14 +418,14 @@ vec4_visitor::emit_pack_half_2x16(dst_reg dst, src_reg src0)
+    /* Give the write-channels of dst the form:
+     *   0xhhhh0000
+     */
+-   tmp_src.swizzle = BRW_SWIZZLE_YYYY;
++   tmp_src.swizzle = SWIZZLE_YYYY;
+    emit(SHL(dst, tmp_src, brw_imm_ud(16u)));
+ 
+    /* Finally, give the write-channels of dst the form of packHalf2x16's
+     * output:
+     *   0xhhhhllll
+     */
+-   tmp_src.swizzle = BRW_SWIZZLE_XXXX;
++   tmp_src.swizzle = SWIZZLE_XXXX;
+    emit(OR(dst, src_reg(dst), tmp_src));
+ }
+ 
+@@ -479,7 +479,7 @@ vec4_visitor::emit_unpack_unorm_4x8(const dst_reg &dst, src_reg src0)
+    emit(MOV(shift, brw_imm_vf4(0x00, 0x60, 0x70, 0x78)));
+ 
+    dst_reg shifted(this, glsl_type::uvec4_type);
+-   src0.swizzle = BRW_SWIZZLE_XXXX;
++   src0.swizzle = SWIZZLE_XXXX;
+    emit(SHR(shifted, src0, src_reg(shift)));
+ 
+    shifted.type = BRW_REGISTER_TYPE_UB;
+@@ -501,7 +501,7 @@ vec4_visitor::emit_unpack_snorm_4x8(const dst_reg &dst, src_reg src0)
+    emit(MOV(shift, brw_imm_vf4(0x00, 0x60, 0x70, 0x78)));
+ 
+    dst_reg shifted(this, glsl_type::uvec4_type);
+-   src0.swizzle = BRW_SWIZZLE_XXXX;
++   src0.swizzle = SWIZZLE_XXXX;
+    emit(SHR(shifted, src0, src_reg(shift)));
+ 
+    shifted.type = BRW_REGISTER_TYPE_B;
+@@ -677,7 +677,7 @@ src_reg::src_reg(class vec4_visitor *v, const struct glsl_type *type)
+    this->nr = v->alloc.allocate(type_size_vec4(type, false));
+ 
+    if (type->is_array() || type->is_struct()) {
+-      this->swizzle = BRW_SWIZZLE_NOOP;
++      this->swizzle = SWIZZLE_NOOP;
+    } else {
+       this->swizzle = brw_swizzle_for_size(type->vector_elements);
+    }
+@@ -694,7 +694,7 @@ src_reg::src_reg(class vec4_visitor *v, const struct glsl_type *type, int size)
+    this->file = VGRF;
+    this->nr = v->alloc.allocate(type_size_vec4(type, false) * size);
+ 
+-   this->swizzle = BRW_SWIZZLE_NOOP;
++   this->swizzle = SWIZZLE_NOOP;
+ 
+    this->type = brw_type_for_base_type(type);
+ }
+@@ -818,7 +818,7 @@ vec4_visitor::emit_ndc_computation()
+    dst_reg ndc_w = ndc;
+    ndc_w.writemask = WRITEMASK_W;
+    src_reg pos_w = pos;
+-   pos_w.swizzle = BRW_SWIZZLE4(SWIZZLE_W, SWIZZLE_W, SWIZZLE_W, SWIZZLE_W);
++   pos_w.swizzle = MAKE_SWIZZLE4(SWIZZLE_W, SWIZZLE_W, SWIZZLE_W, SWIZZLE_W);
+    emit_math(SHADER_OPCODE_RCP, ndc_w, pos_w);
+ 
+    dst_reg ndc_xyz = ndc;
+@@ -877,7 +877,7 @@ vec4_visitor::emit_psiz_and_flags(dst_reg reg)
+       if (devinfo->has_negative_rhw_bug &&
+           output_reg[BRW_VARYING_SLOT_NDC][0].file != BAD_FILE) {
+          src_reg ndc_w = src_reg(output_reg[BRW_VARYING_SLOT_NDC][0]);
+-         ndc_w.swizzle = BRW_SWIZZLE_WWWW;
++         ndc_w.swizzle = SWIZZLE_WWWW;
+          emit(CMP(dst_null_f(), ndc_w, brw_imm_f(0.0f), BRW_CONDITIONAL_L));
+          vec4_instruction *inst;
+          inst = emit(OR(header1_w, src_reg(header1_w), brw_imm_ud(1u << 6)));
+diff --git a/src/intel/compiler/test_vec4_cmod_propagation.cpp b/src/intel/compiler/test_vec4_cmod_propagation.cpp
+index f589427f5a8e6..c030d92428b3b 100644
+--- a/src/intel/compiler/test_vec4_cmod_propagation.cpp
++++ b/src/intel/compiler/test_vec4_cmod_propagation.cpp
+@@ -679,11 +679,11 @@ TEST_F(cmod_propagation_vec4_test, mad_one_component_vec4)
+    src_reg src0 = src_reg(v, glsl_type::vec4_type);
+    src_reg src1 = src_reg(v, glsl_type::vec4_type);
+    src_reg src2 = src_reg(v, glsl_type::vec4_type);
+-   src0.swizzle = src1.swizzle = src2.swizzle = BRW_SWIZZLE_XXXX;
++   src0.swizzle = src1.swizzle = src2.swizzle = SWIZZLE_XXXX;
+    src2.negate = true;
+    src_reg zero(brw_imm_f(0.0f));
+    src_reg tmp(dest);
+-   tmp.swizzle = BRW_SWIZZLE_XXXX;
++   tmp.swizzle = SWIZZLE_XXXX;
+    dst_reg dest_null = bld.null_reg_f();
+    dest_null.writemask = WRITEMASK_X;
+ 
+@@ -721,11 +721,11 @@ TEST_F(cmod_propagation_vec4_test, mad_more_one_component_vec4)
+    src_reg src0 = src_reg(v, glsl_type::vec4_type);
+    src_reg src1 = src_reg(v, glsl_type::vec4_type);
+    src_reg src2 = src_reg(v, glsl_type::vec4_type);
+-   src0.swizzle = src1.swizzle = src2.swizzle = BRW_SWIZZLE_XXXX;
++   src0.swizzle = src1.swizzle = src2.swizzle = SWIZZLE_XXXX;
+    src2.negate = true;
+    src_reg zero(brw_imm_f(0.0f));
+    src_reg tmp(dest);
+-   tmp.swizzle = BRW_SWIZZLE_XXXX;
++   tmp.swizzle = SWIZZLE_XXXX;
+    dst_reg dest_null = bld.null_reg_f();
+ 
+    bld.MAD(dest, src0, src1, src2);
+@@ -762,11 +762,11 @@ TEST_F(cmod_propagation_vec4_test, cmp_mov_vec4)
+    dst_reg dest = dst_reg(v, glsl_type::ivec4_type);
+    dest.writemask = WRITEMASK_X;
+    src_reg src0 = src_reg(v, glsl_type::ivec4_type);
+-   src0.swizzle = BRW_SWIZZLE_XXXX;
++   src0.swizzle = SWIZZLE_XXXX;
+    src0.file = UNIFORM;
+    src_reg nonone = retype(brw_imm_d(16), BRW_REGISTER_TYPE_D);
+    src_reg mov_src = src_reg(dest);
+-   mov_src.swizzle = BRW_SWIZZLE_XXXX;
++   mov_src.swizzle = SWIZZLE_XXXX;
+    dst_reg dest_null = bld.null_reg_d();
+    dest_null.writemask = WRITEMASK_X;
+ 
+@@ -805,7 +805,7 @@ TEST_F(cmod_propagation_vec4_test, mul_cmp_different_channels_vec4)
+    src_reg src1 = src_reg(v, glsl_type::vec4_type);
+    src_reg zero(brw_imm_f(0.0f));
+    src_reg cmp_src = src_reg(dest);
+-   cmp_src.swizzle = BRW_SWIZZLE4(0,1,3,2);
++   cmp_src.swizzle = MAKE_SWIZZLE4(0,1,3,2);
+ 
+    bld.MUL(dest, src0, src1);
+    bld.CMP(bld.null_reg_f(), cmp_src, zero, BRW_CONDITIONAL_NZ);
+diff --git a/src/intel/compiler/test_vec4_copy_propagation.cpp b/src/intel/compiler/test_vec4_copy_propagation.cpp
+index 2600c9c5bf423..6e90d8575248e 100644
+--- a/src/intel/compiler/test_vec4_copy_propagation.cpp
++++ b/src/intel/compiler/test_vec4_copy_propagation.cpp
+@@ -140,13 +140,13 @@ TEST_F(copy_propagation_vec4_test, test_swizzle_swizzle)
+ 
+    v->emit(v->ADD(a, src_reg(a), src_reg(a)));
+ 
+-   v->emit(v->MOV(b, swizzle(src_reg(a), BRW_SWIZZLE4(SWIZZLE_Y,
++   v->emit(v->MOV(b, swizzle(src_reg(a), MAKE_SWIZZLE4(SWIZZLE_Y,
+                                                       SWIZZLE_Z,
+                                                       SWIZZLE_W,
+                                                       SWIZZLE_X))));
+ 
+    vec4_instruction *test_mov =
+-      v->MOV(c, swizzle(src_reg(b), BRW_SWIZZLE4(SWIZZLE_Y,
++      v->MOV(c, swizzle(src_reg(b), MAKE_SWIZZLE4(SWIZZLE_Y,
+                                                  SWIZZLE_Z,
+                                                  SWIZZLE_W,
+                                                  SWIZZLE_X)));
+@@ -155,7 +155,7 @@ TEST_F(copy_propagation_vec4_test, test_swizzle_swizzle)
+    copy_propagation(v);
+ 
+    EXPECT_EQ(test_mov->src[0].nr, a.nr);
+-   EXPECT_EQ(test_mov->src[0].swizzle, BRW_SWIZZLE4(SWIZZLE_Z,
++   EXPECT_EQ(test_mov->src[0].swizzle, MAKE_SWIZZLE4(SWIZZLE_Z,
+                                                     SWIZZLE_W,
+                                                     SWIZZLE_X,
+                                                     SWIZZLE_Y));
+@@ -167,7 +167,7 @@ TEST_F(copy_propagation_vec4_test, test_swizzle_writemask)
+    dst_reg b = dst_reg(v, glsl_type::vec4_type);
+    dst_reg c = dst_reg(v, glsl_type::vec4_type);
+ 
+-   v->emit(v->MOV(b, swizzle(src_reg(a), BRW_SWIZZLE4(SWIZZLE_X,
++   v->emit(v->MOV(b, swizzle(src_reg(a), MAKE_SWIZZLE4(SWIZZLE_X,
+                                                       SWIZZLE_Y,
+                                                       SWIZZLE_X,
+                                                       SWIZZLE_Z))));
+@@ -175,7 +175,7 @@ TEST_F(copy_propagation_vec4_test, test_swizzle_writemask)
+    v->emit(v->MOV(writemask(a, WRITEMASK_XYZ), brw_imm_f(1.0f)));
+ 
+    vec4_instruction *test_mov =
+-      v->MOV(c, swizzle(src_reg(b), BRW_SWIZZLE4(SWIZZLE_W,
++      v->MOV(c, swizzle(src_reg(b), MAKE_SWIZZLE4(SWIZZLE_W,
+                                                  SWIZZLE_W,
+                                                  SWIZZLE_W,
+                                                  SWIZZLE_W)));
+@@ -185,7 +185,7 @@ TEST_F(copy_propagation_vec4_test, test_swizzle_writemask)
+ 
+    /* should not copy propagate */
+    EXPECT_EQ(test_mov->src[0].nr, b.nr);
+-   EXPECT_EQ(test_mov->src[0].swizzle, BRW_SWIZZLE4(SWIZZLE_W,
++   EXPECT_EQ(test_mov->src[0].swizzle, MAKE_SWIZZLE4(SWIZZLE_W,
+                                                     SWIZZLE_W,
+                                                     SWIZZLE_W,
+                                                     SWIZZLE_W));
+diff --git a/src/intel/compiler/test_vec4_dead_code_eliminate.cpp b/src/intel/compiler/test_vec4_dead_code_eliminate.cpp
+index 721f51ec43244..3941779df8281 100644
+--- a/src/intel/compiler/test_vec4_dead_code_eliminate.cpp
++++ b/src/intel/compiler/test_vec4_dead_code_eliminate.cpp
+@@ -150,14 +150,14 @@ TEST_F(dead_code_eliminate_vec4_test, some_dead_channels_all_flags_used)
+    vec4_instruction *test_cmp =
+       bld.CMP(dst_reg(r4), r2, r1, BRW_CONDITIONAL_L);
+ 
+-   test_cmp->src[0].swizzle = BRW_SWIZZLE_WWWW;
+-   test_cmp->src[1].swizzle = BRW_SWIZZLE_XXXX;
++   test_cmp->src[0].swizzle = SWIZZLE_WWWW;
++   test_cmp->src[1].swizzle = SWIZZLE_XXXX;
+ 
+    vec4_instruction *test_mov =
+       bld.MOV(dst_reg(r5), r4);
+ 
+    test_mov->dst.writemask = WRITEMASK_X;
+-   test_mov->src[0].swizzle = BRW_SWIZZLE_XXXX;
++   test_mov->src[0].swizzle = SWIZZLE_XXXX;
+ 
+    vec4_instruction *test_sel =
+       bld.SEL(dst_reg(r6), r3, r6);
+diff --git a/src/intel/compiler/test_vec4_register_coalesce.cpp b/src/intel/compiler/test_vec4_register_coalesce.cpp
+index f0ddbeeadab77..eb40d845c3101 100644
+--- a/src/intel/compiler/test_vec4_register_coalesce.cpp
++++ b/src/intel/compiler/test_vec4_register_coalesce.cpp
+@@ -170,9 +170,9 @@ TEST_F(register_coalesce_vec4_test, test_multiple_use)
+ 
+    src_reg src = src_reg(temp);
+    vec4_instruction *mul = v->emit(v->MUL(temp, something, brw_imm_f(1.0f)));
+-   src.swizzle = BRW_SWIZZLE_XXXX;
++   src.swizzle = SWIZZLE_XXXX;
+    v->emit(v->MOV(m0, src));
+-   src.swizzle = BRW_SWIZZLE_XYZW;
++   src.swizzle = SWIZZLE_XYZW;
+    v->emit(v->MOV(m1, src));
+ 
+    register_coalesce(v);
+diff --git a/src/intel/tools/i965_gram.y b/src/intel/tools/i965_gram.y
+index bfc875d97145b..bab7d955fa80f 100644
+--- a/src/intel/tools/i965_gram.y
++++ b/src/intel/tools/i965_gram.y
+@@ -102,7 +102,7 @@ set_direct_src_operand(struct brw_reg *reg, int type)
+ 		       0,		// vstride
+ 		       0,		// width
+ 		       0,		// hstride
+-		       BRW_SWIZZLE_NOOP,
++		       SWIZZLE_NOOP,
+ 		       WRITEMASK_XYZW);
+ }
+ 
+@@ -1520,7 +1520,7 @@ dstoperand:
+ 		$$.hstride = $2;
+ 		$$.type = $4;
+ 		$$.writemask = $3;
+-		$$.swizzle = BRW_SWIZZLE_NOOP;
++		$$.swizzle = SWIZZLE_NOOP;
+ 		$$.subnr = $$.subnr * brw_reg_type_to_size($4);
+ 	}
+ 	;
+@@ -1695,7 +1695,7 @@ srcarcoperandex:
+ 			     $2.vstride,
+ 			     $2.width,
+ 			     $2.hstride,
+-			     BRW_SWIZZLE_NOOP,
++			     SWIZZLE_NOOP,
+ 			     WRITEMASK_XYZW);
+ 	}
+ 	| nullreg region reg_type
+@@ -2152,15 +2152,15 @@ writemask_w:
+ swizzle:
+ 	/* empty */
+ 	{
+-		$$ = BRW_SWIZZLE_NOOP;
++		$$ = SWIZZLE_NOOP;
+ 	}
+ 	| DOT chansel
+ 	{
+-		$$ = BRW_SWIZZLE4($2, $2, $2, $2);
++		$$ = MAKE_SWIZZLE4($2, $2, $2, $2);
+ 	}
+ 	| DOT chansel chansel chansel chansel
+ 	{
+-		$$ = BRW_SWIZZLE4($2, $3, $4, $5);
++		$$ = MAKE_SWIZZLE4($2, $3, $4, $5);
+ 	}
+ 	;
+ 
+-- 
+GitLab
+
