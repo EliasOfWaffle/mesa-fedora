@@ -88,7 +88,7 @@ Source0:       https://gitlab.freedesktop.org/mesa/mesa/-/archive/main/mesa-main
 Patch4:           25742.patch
 Patch5:           25463.patch
 Patch6:           25552.patch
-Patch7:           19864.patch
+#Patch7:           19864.patch
 
 BuildRequires:  meson >= 0.45
 BuildRequires:  gcc
