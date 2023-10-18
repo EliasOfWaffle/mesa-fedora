@@ -84,7 +84,7 @@ Source0:       https://gitlab.freedesktop.org/mesa/mesa/-/archive/main/mesa-main
 #Patch1:          0001-Squashed-commit-of-the-following.patch
 ####Patc#####h1##3:           25216.patch
 ######        25670.patch 
-Patch3:           23657.patch
+#Patch3###3:           23657.patch
 Patch4:           25742.patch
 Patch5:           25463.patch
 Patch6:           25552.patch
